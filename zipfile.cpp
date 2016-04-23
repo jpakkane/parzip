@@ -26,6 +26,8 @@
 #include<cstring>
 #include<stdexcept>
 #include<memory>
+#include<future>
+#include<thread>
 
 const constexpr int LOCAL_SIG = 0x04034b50;
 
@@ -94,14 +96,25 @@ void ZipFile::unzip() const {
         throw std::runtime_error(msg);
     }
     unsigned char *file_start = (unsigned char*)(data.get());
+    std::vector<std::future<void>> futures;
     for(size_t i=0; i<entries.size(); i++) {
         if(entries[i].compression != 8) {
             printf("Skipping %s, is not compressed with deflate.\n", entries[i].fname.c_str());
             continue;
         }
-        printf("Uncompressing %s.\n", entries[i].fname.c_str());
-        inflate_to_file(file_start + data_offsets[i],
-                entries[i].compressed_size,
-                entries[i].fname);
+//        printf("Uncompressing %s.\n", entries[i].fname.c_str());
+        auto deftask = [this, file_start, i](){
+            inflate_to_file(file_start + data_offsets[i],
+                    entries[i].compressed_size,
+                    entries[i].fname);
+        };
+        futures.emplace_back(std::async(std::launch::async, deftask));
+    }
+    for(const auto &i : futures) {
+        try {
+            i.wait();
+        } catch(const std::exception &e) {
+            printf("%s\n", e.what());
+        }
     }
 }
