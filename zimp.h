@@ -14,17 +14,5 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include<cstdio>
+#pragma once
 
-#include"zipfile.h"
-
-int main(int argc, char **argv) {
-    if(argc != 2 ) {
-        printf("%s <zip file>\n", argv[0]);
-        return 1;
-    }
-    ZipFile f(argv[1]);
-    printf("Zip file %s has %d entries.\n", argv[1], (int)f.size());
-    f.unzip();
-    return 0;
-}

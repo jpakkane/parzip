@@ -16,7 +16,13 @@
 
 
 #include"zipfile.h"
+#include<sys/mman.h>
+#include<sys/stat.h>
+#include<fcntl.h>
+#include<unistd.h>
 #include<cstdio>
+#include<cerrno>
+#include<cstring>
 #include<stdexcept>
 #include<memory>
 
@@ -46,7 +52,7 @@ localheader read_local_entry(FILE *f) {
 
 }
 
-ZipFile::ZipFile(const char *fname) {
+ZipFile::ZipFile(const char *fname) : zipfile(fname) {
     std::unique_ptr<FILE, int(*)(FILE *f)> ifile(fopen(fname, "r"), fclose);
     if(!ifile) {
         throw std::runtime_error("Could not open input file.");
@@ -60,10 +66,33 @@ ZipFile::ZipFile(const char *fname) {
             break;
         }
         entries.push_back(read_local_entry(ifile.get()));
+        data_offsets.push_back(ftell(ifile.get()));
         fseek(ifile.get(), entries.back().compressed_size, SEEK_CUR);
         if(entries.back().gp_bitflag & (1<<2)) {
             fseek(ifile.get(), 3*4, SEEK_CUR);
         }
     }
-    printf("This file has %d entries.\n", (int)entries.size());
+    fseek(ifile.get(), 0, SEEK_END);
+    fsize = ftell(ifile.get());
+}
+
+void ZipFile::unzip() const {
+    int fd = open(zipfile.c_str(), O_RDONLY);
+    if(fd < 0) {
+        std::string msg("Could not open zip file:");
+        msg += strerror(errno);
+        throw std::runtime_error(msg);
+    }
+    auto unmapper = [&](void* d) { munmap(d, fsize); };
+    std::unique_ptr<void, decltype(unmapper)> data(mmap(nullptr, fsize, PROT_READ, MAP_PRIVATE, fd, 0),
+            unmapper);
+    close(fd);
+    if(!data) {
+        std::string msg("Could not mmap zip file:");
+        msg += strerror(errno);
+        throw std::runtime_error(msg);
+    }
+    for(size_t i=0; i<entries.size(); i++) {
+        printf("Unpacking %s.\n", entries[i].fname.c_str());
+    }
 }

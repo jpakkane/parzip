@@ -25,8 +25,14 @@ class ZipFile {
 public:
     ZipFile(const char *fname);
 
+    size_t size() const { return entries.size(); }
+
+    void unzip() const;
+
 private:
 
-    std::string fname;
+    std::string zipfile;
     std::vector<localheader> entries;
+    std::vector<long> data_offsets;
+    size_t fsize;
 };
