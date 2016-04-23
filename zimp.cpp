@@ -22,13 +22,16 @@
  *  Version 1.4  11 December 2005  Mark Adler */
 
 #include"zimp.h"
+#include "zlib.h"
 
 #include<algorithm>
 #include<cstdint>
 #include <cstdio>
 #include <cstring>
 #include <cassert>
-#include "zlib.h"
+#include<cstdio>
+
+#include<memory>
 
 #define CHUNK 16384
 
@@ -38,7 +41,12 @@
    invalid or incomplete, Z_VERSION_ERROR if the version of zlib.h and
    the version of the library linked do not match, or Z_ERRNO if there
    is an error reading or writing the files. */
-int inf(const unsigned char *data_start, uint32_t data_size, FILE *dest) {
+void inflate_to_file(const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+    std::unique_ptr<FILE, int(*)(FILE *f)> ofile(fopen(outname.c_str(), "wb"), fclose);
+    if(!ofile) {
+        throw std::runtime_error("Could not open input file.");
+    }
+    FILE *dest = ofile.get();
     int ret;
     unsigned have;
     z_stream strm;
@@ -51,9 +59,10 @@ int inf(const unsigned char *data_start, uint32_t data_size, FILE *dest) {
     strm.opaque = Z_NULL;
     strm.avail_in = 0;
     strm.next_in = Z_NULL;
-    ret = inflateInit(&strm);
+    ret = inflateInit2(&strm, -15);
     if (ret != Z_OK)
-        return ret;
+        throw std::runtime_error("Could not init zlib.");
+    std::unique_ptr<z_stream, int (*)(z_stream_s*)> zcloser(&strm, inflateEnd);
 
     /* decompress until deflate stream ends or end of file */
     do {
@@ -73,25 +82,23 @@ int inf(const unsigned char *data_start, uint32_t data_size, FILE *dest) {
             assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
             switch (ret) {
             case Z_NEED_DICT:
-                ret = Z_DATA_ERROR;     /* and fall through */
             case Z_DATA_ERROR:
             case Z_MEM_ERROR:
-                (void)inflateEnd(&strm);
-                return ret;
+                throw std::runtime_error(strm.msg);
             }
             have = CHUNK - strm.avail_out;
             if (fwrite(out, 1, have, dest) != have || ferror(dest)) {
-                (void)inflateEnd(&strm);
-                return Z_ERRNO;
+                throw std::runtime_error("Writing to file is fail.");
             }
         } while (strm.avail_out == 0);
         current += CHUNK;
         /* done when inflate() says it's done */
     } while (ret != Z_STREAM_END);
-
-    /* clean up and return */
-    (void)inflateEnd(&strm);
-    return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
+/*
+    if(Z_STREAM_END != Z_OK) {
+        throw std::runtime_error("Decompression failed.");
+    }
+*/
 }
 
 /* report a zlib or i/o error */

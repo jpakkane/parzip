@@ -16,6 +16,7 @@
 
 
 #include"zipfile.h"
+#include"zimp.h"
 #include<sys/mman.h>
 #include<sys/stat.h>
 #include<fcntl.h>
@@ -92,7 +93,15 @@ void ZipFile::unzip() const {
         msg += strerror(errno);
         throw std::runtime_error(msg);
     }
+    unsigned char *file_start = (unsigned char*)(data.get());
     for(size_t i=0; i<entries.size(); i++) {
-        printf("Unpacking %s.\n", entries[i].fname.c_str());
+        if(entries[i].compression != 8) {
+            printf("Skipping %s, is not compressed with deflate.\n", entries[i].fname.c_str());
+            continue;
+        }
+        printf("Uncompressing %s.\n", entries[i].fname.c_str());
+        inflate_to_file(file_start + data_offsets[i],
+                entries[i].compressed_size,
+                entries[i].fname);
     }
 }
