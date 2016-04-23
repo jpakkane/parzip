@@ -14,16 +14,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include<cstdio>
+#pragma once
 
-#include"zipfile.h"
+#include<string>
 
-int main(int argc, char **argv) {
-    if(argc != 2 ) {
-        printf("%s <zip file>\n", argv[0]);
-        return 1;
-    }
-    ZipFile f(argv[1]);
-    printf("All done now.\n");
-    return 0;
-}
+class ZipFile {
+
+public:
+    ZipFile(const char *fname);
+
+private:
+    std::string fname;
+};

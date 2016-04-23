@@ -14,16 +14,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include<cstdio>
 
 #include"zipfile.h"
+#include<memory>
+#include<cstdio>
+#include<stdexcept>
 
-int main(int argc, char **argv) {
-    if(argc != 2 ) {
-        printf("%s <zip file>\n", argv[0]);
-        return 1;
+ZipFile::ZipFile(const char *fname) {
+    std::unique_ptr<FILE, int(*)(FILE *f)> ifile(fopen(fname, "r"), fclose);
+    if(!ifile) {
+        throw std::runtime_error("Could not open input file.");
     }
-    ZipFile f(argv[1]);
-    printf("All done now.\n");
-    return 0;
+    char header[2];
+    fread(header, 2, 1, ifile.get());
+    if(header[0] != 'P' || header[1] != 'K') {
+        throw std::runtime_error("Not a zip file.");
+    }
 }
