@@ -25,7 +25,6 @@ int main(int argc, char **argv) {
         return 1;
     }
     ZipFile f(argv[1]);
-    printf("Zip file %s has %d entries.\n", argv[1], (int)f.size());
     f.unzip();
     return 0;
 }

@@ -117,13 +117,16 @@ void ZipFile::unzip() const {
             printf("Skipping %s, unsupported compression method.\n", entries[i].fname.c_str());
             continue;
         }
-
     }
-    for(const auto &i : futures) {
+    int index = 0;
+    for(const auto &f : futures) {
         try {
-            i.wait();
+            f.wait();
+            printf("OK: %s\n", entries[index].fname.c_str());
         } catch(const std::exception &e) {
-            printf("%s\n", e.what());
+            printf("FAIL: %s\n", entries[index].fname.c_str());
+            printf("  %s\n", e.what());
         }
+        index++;
     }
 }
