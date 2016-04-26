@@ -98,17 +98,26 @@ void ZipFile::unzip() const {
     unsigned char *file_start = (unsigned char*)(data.get());
     std::vector<std::future<void>> futures;
     for(size_t i=0; i<entries.size(); i++) {
-        if(entries[i].compression != 8) {
-            printf("Skipping %s, is not compressed with deflate.\n", entries[i].fname.c_str());
+        const auto comp = entries[i].compression;
+        if(comp == 0) {
+            auto unstoretask = [this, file_start, i](){
+                unstore_to_file(file_start + data_offsets[i],
+                                entries[i].compressed_size,
+                                entries[i].fname);
+                };
+            futures.emplace_back(std::async(std::launch::async, unstoretask));
+        } else if(comp == 8) {
+            auto deftask = [this, file_start, i](){
+                inflate_to_file(file_start + data_offsets[i],
+                        entries[i].compressed_size,
+                        entries[i].fname);
+            };
+            futures.emplace_back(std::async(std::launch::async, deftask));
+        } else {
+            printf("Skipping %s, unsupported compression method.\n", entries[i].fname.c_str());
             continue;
         }
-//        printf("Uncompressing %s.\n", entries[i].fname.c_str());
-        auto deftask = [this, file_start, i](){
-            inflate_to_file(file_start + data_offsets[i],
-                    entries[i].compressed_size,
-                    entries[i].fname);
-        };
-        futures.emplace_back(std::async(std::launch::async, deftask));
+
     }
     for(const auto &i : futures) {
         try {

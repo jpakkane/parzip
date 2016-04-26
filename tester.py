@@ -58,7 +58,10 @@ class TestUnzip(unittest.TestCase):
         f2.close()
         self.assertEqual(d1, d2)
 
-    def test_basic(self):
+    def test_deflate(self):
+        self.check_same('basic.zip')
+
+    def test_store(self):
         self.check_same('basic.zip')
 
 if __name__ == '__main__':

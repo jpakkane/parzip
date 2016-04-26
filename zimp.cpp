@@ -126,3 +126,14 @@ void zerr(int ret)
         fputs("zlib version mismatch!\n", stderr);
     }
 }
+
+void unstore_to_file(const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+    std::unique_ptr<FILE, int(*)(FILE *f)> ofile(fopen(outname.c_str(), "wb"), fclose);
+    if(!ofile) {
+        throw std::runtime_error("Could not open input file.");
+    }
+    auto bytes_written = fwrite(data_start, 1, data_size, ofile.get());
+    if(bytes_written != data_size) {
+        throw std::runtime_error("Could not write file fully.");
+    }
+}
