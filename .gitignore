@@ -3,5 +3,6 @@
 .project
 .cproject
 .pydevproject
+/jzip.pro*
 *~
 
