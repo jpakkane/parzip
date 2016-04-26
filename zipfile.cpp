@@ -119,9 +119,9 @@ void ZipFile::unzip() const {
         }
     }
     int index = 0;
-    for(const auto &f : futures) {
+    for(auto &f : futures) {
         try {
-            f.wait();
+            f.get();
             printf("OK: %s\n", entries[index].fname.c_str());
         } catch(const std::exception &e) {
             printf("FAIL: %s\n", entries[index].fname.c_str());

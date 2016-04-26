@@ -23,6 +23,7 @@
  *  Version 1.4  11 December 2005  Mark Adler */
 
 #include"zimp.h"
+#include"fileutils.h"
 #include "zlib.h"
 
 #include<algorithm>
@@ -126,8 +127,8 @@ void zerr(int ret)
         fputs("zlib version mismatch!\n", stderr);
     }
 }
-
 void unstore_to_file(const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+    create_dirs_for_file(outname);
     std::unique_ptr<FILE, int(*)(FILE *f)> ofile(fopen(outname.c_str(), "wb"), fclose);
     if(!ofile) {
         throw std::runtime_error("Could not open input file.");

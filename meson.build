@@ -5,7 +5,7 @@ zdep = dependency('zlib')
 threaddep = dependency('threads')
 
 executable('junzip',
-  'junzip.cpp', 'zipfile.cpp', 'zimp.cpp',
+  'junzip.cpp', 'zipfile.cpp', 'zimp.cpp', 'fileutils.cpp',
   dependencies : [zdep, threaddep]
 )
 
