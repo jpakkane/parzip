@@ -64,6 +64,9 @@ class TestUnzip(unittest.TestCase):
     def test_store(self):
         self.check_same('basic.zip')
 
+    def test_subdir(self):
+        self.check_same('subdirs.zip')
+
 if __name__ == '__main__':
     datadir = os.path.join(sys.argv[1], 'testdata')
     unzip_exe = os.path.join(sys.argv[2], 'junzip')
