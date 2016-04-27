@@ -23,6 +23,7 @@
  *  Version 1.4  11 December 2005  Mark Adler */
 
 #include"zimp.h"
+#include"utils.h"
 #include"fileutils.h"
 #include "zlib.h"
 
@@ -46,7 +47,7 @@
 void inflate_to_file(const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
     std::unique_ptr<FILE, int(*)(FILE *f)> ofile(fopen(outname.c_str(), "wb"), fclose);
     if(!ofile) {
-        throw std::runtime_error("Could not open input file.");
+        throw_system("Could not open input file:");
     }
     FILE *dest = ofile.get();
     int ret;
@@ -90,7 +91,7 @@ void inflate_to_file(const unsigned char *data_start, uint32_t data_size, const 
             }
             have = CHUNK - strm.avail_out;
             if (fwrite(out, 1, have, dest) != have || ferror(dest)) {
-                throw std::runtime_error("Writing to file is fail.");
+                throw_system("Could not write to file:");
             }
         } while (strm.avail_out == 0);
         current += CHUNK;
@@ -131,10 +132,10 @@ void unstore_to_file(const unsigned char *data_start, uint32_t data_size, const 
     create_dirs_for_file(outname);
     std::unique_ptr<FILE, int(*)(FILE *f)> ofile(fopen(outname.c_str(), "wb"), fclose);
     if(!ofile) {
-        throw std::runtime_error("Could not open input file.");
+        throw_system("Could not open input file:");
     }
     auto bytes_written = fwrite(data_start, 1, data_size, ofile.get());
     if(bytes_written != data_size) {
-        throw std::runtime_error("Could not write file fully.");
+        throw_system("Could not write file fully:");
     }
 }

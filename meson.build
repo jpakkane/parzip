@@ -6,6 +6,7 @@ threaddep = dependency('threads')
 
 executable('junzip',
   'junzip.cpp', 'zipfile.cpp', 'zimp.cpp', 'fileutils.cpp',
+  'utils.cpp',
   dependencies : [zdep, threaddep]
 )
 

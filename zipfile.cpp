@@ -17,6 +17,7 @@
 
 #include"zipfile.h"
 #include"zimp.h"
+#include"utils.h"
 #include<sys/mman.h>
 #include<sys/stat.h>
 #include<fcntl.h>
@@ -58,7 +59,7 @@ localheader read_local_entry(FILE *f) {
 ZipFile::ZipFile(const char *fname) : zipfile(fname) {
     std::unique_ptr<FILE, int(*)(FILE *f)> ifile(fopen(fname, "r"), fclose);
     if(!ifile) {
-        throw std::runtime_error("Could not open input file.");
+        throw_system("Could not open input file:");
     }
     while(true) {
         auto curloc = ftell(ifile.get());
@@ -82,18 +83,14 @@ ZipFile::ZipFile(const char *fname) : zipfile(fname) {
 void ZipFile::unzip() const {
     int fd = open(zipfile.c_str(), O_RDONLY);
     if(fd < 0) {
-        std::string msg("Could not open zip file:");
-        msg += strerror(errno);
-        throw std::runtime_error(msg);
+        throw_system("Could not open zip file:");
     }
     auto unmapper = [&](void* d) { munmap(d, fsize); };
     std::unique_ptr<void, decltype(unmapper)> data(mmap(nullptr, fsize, PROT_READ, MAP_PRIVATE, fd, 0),
             unmapper);
     close(fd);
     if(!data) {
-        std::string msg("Could not mmap zip file:");
-        msg += strerror(errno);
-        throw std::runtime_error(msg);
+        throw_system("Could not mmap zip file:");
     }
     unsigned char *file_start = (unsigned char*)(data.get());
     std::vector<std::future<void>> futures;

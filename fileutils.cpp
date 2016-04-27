@@ -16,6 +16,7 @@
  */
 
 #include"fileutils.h"
+#include"utils.h"
 
 #include<cassert>
 #include<stdexcept>
@@ -44,7 +45,7 @@ void mkdirp(const std::string &s) {
         if(!is_dir(curdir)) {
             mkdir(curdir.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
             if(!is_dir(curdir)) {
-                throw std::runtime_error("Could not create directory.");
+                throw_system("Could not create directory:");
             }
         }
         offset = slash + 1;
