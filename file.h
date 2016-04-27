@@ -40,7 +40,9 @@ public:
     int fileno() const;
 
     uint8_t read8();
-    uint16_t read16();
-    uint32_t read32();
+    uint16_t read16le();
+    uint32_t read32le();
+    uint16_t read16be();
+    uint32_t read32be();
     void read(void *buf, size_t bufsize);
 };

@@ -17,7 +17,7 @@
 
 #include"file.h"
 #include"utils.h"
-
+#include"endian.h"
 #include<cassert>
 
 File::File(const std::string &fname, const char *mode) {
@@ -62,16 +62,28 @@ uint8_t File::read8() {
     return r;
 }
 
-uint16_t File::read16() {
+uint16_t File::read16le() {
     uint16_t r;
     read(&r, sizeof(r));
-    return r;
+    return le16toh(r);
 
 }
 
-uint32_t File::read32() {
+uint32_t File::read32le() {
     uint32_t r;
     read(&r, sizeof(r));
-    return r;
+    return le32toh(r);
+}
 
+uint16_t File::read16be() {
+    uint16_t r;
+    read(&r, sizeof(r));
+    return be16toh(r);
+
+}
+
+uint32_t File::read32be() {
+    uint32_t r;
+    read(&r, sizeof(r));
+    return be32toh(r);
 }

@@ -37,16 +37,16 @@ namespace {
 localheader read_local_entry(File &f) {
     localheader h;
     h.signature = LOCAL_SIG;
-    h.needed_version = f.read16();
-    h.gp_bitflag = f.read16();
-    h.compression = f.read16();
-    h.last_mod_time = f.read16();
-    h.last_mod_date = f.read16();
+    h.needed_version = f.read16le();
+    h.gp_bitflag = f.read16le();
+    h.compression = f.read16le();
+    h.last_mod_time = f.read16le();
+    h.last_mod_date = f.read16le();
     f.read(&h.crc32, 4);
-    h.compressed_size = f.read32();
-    h.uncompressed_size = f.read32();
-    h.file_name_length = f.read16();
-    h.extra_field_length = f.read16();
+    h.compressed_size = f.read32le();
+    h.uncompressed_size = f.read32le();
+    h.file_name_length = f.read16le();
+    h.extra_field_length = f.read16le();
     h.fname.insert(0, h.file_name_length, 'a');
     h.extra.insert(0, h.extra_field_length, 'b');
     f.read(&(h.fname[0]), h.file_name_length);
@@ -59,7 +59,7 @@ localheader read_local_entry(File &f) {
 ZipFile::ZipFile(const char *fname) : zipfile(fname, "r") {
     while(true) {
         auto curloc = zipfile.tell();
-        uint32_t head = zipfile.read32();
+        uint32_t head = zipfile.read32le();
         if(head != LOCAL_SIG) {
             zipfile.seek(curloc);
             break;
