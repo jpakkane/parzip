@@ -70,6 +70,9 @@ class TestUnzip(unittest.TestCase):
     def test_many_files(self):
         self.check_same('manyfiles.zip')
 
+    def test_dir_entry(self):
+        self.check_same('direntry.zip')
+
 if __name__ == '__main__':
     datadir = os.path.join(sys.argv[1], 'testdata')
     unzip_exe = os.path.join(sys.argv[2], 'junzip')

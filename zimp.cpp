@@ -137,6 +137,10 @@ void unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *
 
 void do_unpack(int compression_method, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
     decltype(unstore_to_file) *f;
+    if(outname.back() == '/') {
+        mkdirp(outname);
+        return;
+    }
     if(compression_method == ZIP_NO_COMPRESSION) {
         f = unstore_to_file;
     } else if(compression_method == ZIP_DEFLATE) {
