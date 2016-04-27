@@ -93,6 +93,7 @@ void ZipFile::unzip() const {
         throw_system("Could not mmap zip file:");
     }
     unsigned char *file_start = (unsigned char*)(data.get());
+    // Clearing will call all destructors, so all tasks will get run.
     std::vector<std::future<void>> futures;
     for(size_t i=0; i<entries.size(); i++) {
         auto unstoretask = [this, file_start, i](){
@@ -101,17 +102,11 @@ void ZipFile::unzip() const {
                         entries[i].compressed_size,
                         entries[i].fname);
                 };
-        futures.emplace_back(std::async(std::launch::async, unstoretask));
-    }
-    int index = 0;
-    for(auto &f : futures) {
         try {
-            f.get();
-            printf("OK: %s\n", entries[index].fname.c_str());
-        } catch(const std::exception &e) {
-            printf("FAIL: %s\n", entries[index].fname.c_str());
-            printf("  %s\n", e.what());
+            futures.emplace_back(std::async(std::launch::async, unstoretask));
+        } catch(const std::system_error &) {
+            futures.clear();
+            futures.emplace_back(std::async(std::launch::async, unstoretask));
         }
-        index++;
     }
 }

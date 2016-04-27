@@ -135,7 +135,7 @@ void unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *
     }
 }
 
-void unpack_entry(int compression_method, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+void do_unpack(int compression_method, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
     decltype(unstore_to_file) *f;
     if(compression_method == ZIP_NO_COMPRESSION) {
         f = unstore_to_file;
@@ -153,4 +153,15 @@ void unpack_entry(int compression_method, const unsigned char *data_start, uint3
         throw_system("Could not open input file:");
     }
     (*f)(data_start, data_size, ofile.get());
+}
+
+void unpack_entry(int compression_method, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+    try {
+        do_unpack(compression_method, data_start, data_size, outname);
+        printf("OK: %s\n", outname.c_str());
+    } catch(const std::exception &e) {
+        printf("FAIL: %s\n", outname.c_str());
+        printf("  %s\n", e.what());
+    }
+
 }
