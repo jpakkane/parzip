@@ -129,8 +129,8 @@ void zerr(int ret)
         fputs("zlib version mismatch!\n", stderr);
     }
 }
+
 void unstore_to_file(const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
-    create_dirs_for_file(outname);
     std::unique_ptr<FILE, int(*)(FILE *f)> ofile(fopen(outname.c_str(), "wb"), fclose);
     if(!ofile) {
         throw_system("Could not open input file:");
@@ -142,15 +142,17 @@ void unstore_to_file(const unsigned char *data_start, uint32_t data_size, const 
 }
 
 void unpack_entry(int compression_method, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+    decltype(unstore_to_file) *f;
     if(compression_method == ZIP_NO_COMPRESSION) {
-        unstore_to_file(data_start,
-                data_size,
-                outname);
+        f = unstore_to_file;
     } else if(compression_method == ZIP_DEFLATE) {
-        inflate_to_file(data_start,
-                data_size,
-                outname);
+        f = inflate_to_file;
     } else {
         throw std::runtime_error("Unsupported compression format.");
     }
+    if(exists_on_fs(outname)) {
+        throw std::runtime_error("Already exists, will not overwrite.");
+    }
+    create_dirs_for_file(outname);
+    (*f)(data_start, data_size, outname);
 }

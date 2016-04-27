@@ -31,6 +31,20 @@ bool is_dir(const std::string &s) {
     return (sbuf.st_mode & S_IFMT) == S_IFDIR;
 }
 
+bool is_file(const std::string &s) {
+    struct stat sbuf;
+    if(stat(s.c_str(), &sbuf) < 0) {
+        return false;
+    }
+    return (sbuf.st_mode & S_IFMT) == S_IFREG;
+}
+
+bool exists_on_fs(const std::string &s) {
+    struct stat sbuf;
+    return stat(s.c_str(), &sbuf) == 0;
+}
+
+
 void mkdirp(const std::string &s) {
     if(is_dir(s)) {
         return;
