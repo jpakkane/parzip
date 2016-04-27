@@ -34,54 +34,49 @@ const constexpr int LOCAL_SIG = 0x04034b50;
 
 namespace {
 
-localheader read_local_entry(FILE *f) {
+localheader read_local_entry(File &f) {
     localheader h;
     h.signature = LOCAL_SIG;
-    fread(&h.needed_version, sizeof(uint16_t), 1, f);
-    fread(&h.gp_bitflag, sizeof(uint16_t), 1, f);
-    fread(&h.compression, sizeof(uint16_t), 1, f);
-    fread(&h.last_mod_time, sizeof(uint16_t), 1, f);
-    fread(&h.last_mod_date, sizeof(uint16_t), 1, f);
-    fread(&h.crc32, 4, 1, f);
-    fread(&h.compressed_size, sizeof(uint32_t), 1, f);
-    fread(&h.uncompressed_size, sizeof(uint32_t), 1, f);
-    fread(&h.file_name_length, sizeof(uint16_t), 1, f);
-    fread(&h.extra_field_length, sizeof(uint16_t), 1, f);
+    h.needed_version = f.read16();
+    h.gp_bitflag = f.read16();
+    h.compression = f.read16();
+    h.last_mod_time = f.read16();
+    h.last_mod_date = f.read16();
+    f.read(&h.crc32, 4);
+    h.compressed_size = f.read32();
+    h.uncompressed_size = f.read32();
+    h.file_name_length = f.read16();
+    h.extra_field_length = f.read16();
     h.fname.insert(0, h.file_name_length, 'a');
     h.extra.insert(0, h.extra_field_length, 'b');
-    fread(&(h.fname[0]), h.file_name_length, 1, f);
-    fread(&(h.extra[0]), h.extra_field_length, 1, f);
+    f.read(&(h.fname[0]), h.file_name_length);
+    f.read(&(h.extra[0]), h.extra_field_length);
     return h;
 }
 
 }
 
-ZipFile::ZipFile(const char *fname) : zipfile(fname) {
-    std::unique_ptr<FILE, int(*)(FILE *f)> ifile(fopen(fname, "r"), fclose);
-    if(!ifile) {
-        throw_system("Could not open input file:");
-    }
+ZipFile::ZipFile(const char *fname) : zipfile(fname, "r") {
     while(true) {
-        auto curloc = ftell(ifile.get());
-        uint32_t head;
-        fread(&head, sizeof(uint32_t), 1, ifile.get());
+        auto curloc = zipfile.tell();
+        uint32_t head = zipfile.read32();
         if(head != LOCAL_SIG) {
-            fseek(ifile.get(), curloc, SEEK_SET);
+            zipfile.seek(curloc);
             break;
         }
-        entries.push_back(read_local_entry(ifile.get()));
-        data_offsets.push_back(ftell(ifile.get()));
-        fseek(ifile.get(), entries.back().compressed_size, SEEK_CUR);
+        entries.push_back(read_local_entry(zipfile));
+        data_offsets.push_back(zipfile.tell());
+        zipfile.seek(entries.back().compressed_size, SEEK_CUR);
         if(entries.back().gp_bitflag & (1<<2)) {
-            fseek(ifile.get(), 3*4, SEEK_CUR);
+            zipfile.seek(3*4, SEEK_CUR);
         }
     }
-    fseek(ifile.get(), 0, SEEK_END);
-    fsize = ftell(ifile.get());
+    zipfile.seek(0, SEEK_END);
+    fsize = zipfile.tell();
 }
 
 void ZipFile::unzip() const {
-    int fd = open(zipfile.c_str(), O_RDONLY);
+    int fd = zipfile.fileno();
     if(fd < 0) {
         throw_system("Could not open zip file:");
     }

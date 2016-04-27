@@ -17,24 +17,30 @@
 
 #pragma once
 
-#include"zipdefs.h"
-#include"file.h"
+#include<cstdio>
 #include<string>
-#include<vector>
 
-class ZipFile {
-
-public:
-    ZipFile(const char *fname);
-
-    size_t size() const { return entries.size(); }
-
-    void unzip() const;
-
+class File final {
 private:
 
-    File zipfile;
-    std::vector<localheader> entries;
-    std::vector<long> data_offsets;
-    size_t fsize;
+    FILE *f;
+
+public:
+
+    File() = delete;
+    File(const File &) = delete;
+    File(File &&other) { f = other.f; other.f = nullptr; }
+    ~File();
+
+    File(const std::string &fname, const char *mode);
+    File(FILE *opened);
+
+    long tell();
+    int seek(long offset, int whence=SEEK_SET);
+    int fileno() const;
+
+    uint8_t read8();
+    uint16_t read16();
+    uint32_t read32();
+    void read(void *buf, size_t bufsize);
 };
