@@ -19,6 +19,8 @@
 
 #include<string>
 
+void unpack_entry(int compression_method, const unsigned char *data_start, uint32_t data_size, const std::string &outname);
+
 void inflate_to_file(const unsigned char *data_start, uint32_t data_size, const std::string &outname);
 
 void unstore_to_file(const unsigned char *data_start, uint32_t data_size, const std::string &outname);

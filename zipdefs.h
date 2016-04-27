@@ -20,6 +20,9 @@
 #include<cstdint>
 #include<string>
 
+#define ZIP_NO_COMPRESSION 0
+#define ZIP_DEFLATE 8
+
 struct localheader {
     uint32_t signature;
     uint16_t needed_version;

@@ -23,6 +23,7 @@
  *  Version 1.4  11 December 2005  Mark Adler */
 
 #include"zimp.h"
+#include"zipdefs.h"
 #include"utils.h"
 #include"fileutils.h"
 #include "zlib.h"
@@ -137,5 +138,19 @@ void unstore_to_file(const unsigned char *data_start, uint32_t data_size, const 
     auto bytes_written = fwrite(data_start, 1, data_size, ofile.get());
     if(bytes_written != data_size) {
         throw_system("Could not write file fully:");
+    }
+}
+
+void unpack_entry(int compression_method, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+    if(compression_method == ZIP_NO_COMPRESSION) {
+        unstore_to_file(data_start,
+                data_size,
+                outname);
+    } else if(compression_method == ZIP_DEFLATE) {
+        inflate_to_file(data_start,
+                data_size,
+                outname);
+    } else {
+        throw std::runtime_error("Unsupported compression format.");
     }
 }

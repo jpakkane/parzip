@@ -95,25 +95,13 @@ void ZipFile::unzip() const {
     unsigned char *file_start = (unsigned char*)(data.get());
     std::vector<std::future<void>> futures;
     for(size_t i=0; i<entries.size(); i++) {
-        const auto comp = entries[i].compression;
-        if(comp == 0) {
-            auto unstoretask = [this, file_start, i](){
-                unstore_to_file(file_start + data_offsets[i],
-                                entries[i].compressed_size,
-                                entries[i].fname);
-                };
-            futures.emplace_back(std::async(std::launch::async, unstoretask));
-        } else if(comp == 8) {
-            auto deftask = [this, file_start, i](){
-                inflate_to_file(file_start + data_offsets[i],
+        auto unstoretask = [this, file_start, i](){
+                unpack_entry(entries[i].compression,
+                        file_start + data_offsets[i],
                         entries[i].compressed_size,
                         entries[i].fname);
-            };
-            futures.emplace_back(std::async(std::launch::async, deftask));
-        } else {
-            printf("Skipping %s, unsupported compression method.\n", entries[i].fname.c_str());
-            continue;
-        }
+                };
+        futures.emplace_back(std::async(std::launch::async, unstoretask));
     }
     int index = 0;
     for(auto &f : futures) {
