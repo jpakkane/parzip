@@ -39,18 +39,16 @@
 
 #define CHUNK 16384
 
+void inflate_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
+void unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
+
 /* Decompress from file source to file dest until stream ends or EOF.
    inf() returns Z_OK on success, Z_MEM_ERROR if memory could not be
    allocated for processing, Z_DATA_ERROR if the deflate data is
    invalid or incomplete, Z_VERSION_ERROR if the version of zlib.h and
    the version of the library linked do not match, or Z_ERRNO if there
    is an error reading or writing the files. */
-void inflate_to_file(const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
-    std::unique_ptr<FILE, int(*)(FILE *f)> ofile(fopen(outname.c_str(), "wb"), fclose);
-    if(!ofile) {
-        throw_system("Could not open input file:");
-    }
-    FILE *dest = ofile.get();
+void inflate_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile) {
     int ret;
     unsigned have;
     z_stream strm;
@@ -73,7 +71,7 @@ void inflate_to_file(const unsigned char *data_start, uint32_t data_size, const 
         if(current >= data_start + data_size) {
             break;
         }
-        strm.avail_in = std::min((long)CHUNK, data_size - (current-data_start));
+        strm.avail_in = std::min((size_t)CHUNK, (size_t)(data_size - (current-data_start)));
         if (strm.avail_in == 0)
             break;
         strm.next_in = const_cast<unsigned char*>(current); // zlib header is const-broken
@@ -91,7 +89,7 @@ void inflate_to_file(const unsigned char *data_start, uint32_t data_size, const 
                 throw std::runtime_error(strm.msg);
             }
             have = CHUNK - strm.avail_out;
-            if (fwrite(out, 1, have, dest) != have || ferror(dest)) {
+            if (fwrite(out, 1, have, ofile) != have || ferror(ofile)) {
                 throw_system("Could not write to file:");
             }
         } while (strm.avail_out == 0);
@@ -130,12 +128,8 @@ void zerr(int ret)
     }
 }
 
-void unstore_to_file(const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
-    std::unique_ptr<FILE, int(*)(FILE *f)> ofile(fopen(outname.c_str(), "wb"), fclose);
-    if(!ofile) {
-        throw_system("Could not open input file:");
-    }
-    auto bytes_written = fwrite(data_start, 1, data_size, ofile.get());
+void unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile) {
+    auto bytes_written = fwrite(data_start, 1, data_size, ofile);
     if(bytes_written != data_size) {
         throw_system("Could not write file fully:");
     }
@@ -154,5 +148,9 @@ void unpack_entry(int compression_method, const unsigned char *data_start, uint3
         throw std::runtime_error("Already exists, will not overwrite.");
     }
     create_dirs_for_file(outname);
-    (*f)(data_start, data_size, outname);
+    std::unique_ptr<FILE, int(*)(FILE *f)> ofile(fopen(outname.c_str(), "wb"), fclose);
+    if(!ofile) {
+        throw_system("Could not open input file:");
+    }
+    (*f)(data_start, data_size, ofile.get());
 }
