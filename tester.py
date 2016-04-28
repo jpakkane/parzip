@@ -50,6 +50,15 @@ class TestUnzip(unittest.TestCase):
                 self.files_identical(f1, f2)
 
     def files_identical(self, fn1, fn2):
+        self.file_content_identical(fn1, fn2)
+        self.file_metadata_identical(fn1, fn2)
+
+    def file_metadata_identical(self, fn1, fn2):
+        stat1 = os.stat(fn1)
+        stat2 = os.stat(fn2)
+        self.assertEqual(stat1.st_mode, stat2.st_mode)
+
+    def file_content_identical(self, fn1, fn2):
         f1 = open(fn1, 'rb')
         d1 = f1.read()
         f1.close()
