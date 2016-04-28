@@ -16,7 +16,7 @@
  */
 
 
-/* This file is based on:
+/* Zlib decompression is based on:
  *
  *  zpipe.c: example of proper use of zlib's inflate() and deflate()
  *  Not copyrighted -- provided to the public domain
@@ -106,30 +106,6 @@ void inflate_to_file(const unsigned char *data_start, uint32_t data_size, FILE *
 */
 }
 
-/* report a zlib or i/o error */
-void zerr(int ret)
-{
-    fputs("zpipe: ", stderr);
-    switch (ret) {
-    case Z_ERRNO:
-        if (ferror(stdin))
-            fputs("error reading stdin\n", stderr);
-        if (ferror(stdout))
-            fputs("error writing stdout\n", stderr);
-        break;
-    case Z_STREAM_ERROR:
-        fputs("invalid compression level\n", stderr);
-        break;
-    case Z_DATA_ERROR:
-        fputs("invalid or incomplete deflate data\n", stderr);
-        break;
-    case Z_MEM_ERROR:
-        fputs("out of memory\n", stderr);
-        break;
-    case Z_VERSION_ERROR:
-        fputs("zlib version mismatch!\n", stderr);
-    }
-}
 
 void unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile) {
     auto bytes_written = fwrite(data_start, 1, data_size, ofile);
