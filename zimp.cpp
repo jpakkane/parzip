@@ -28,6 +28,7 @@
 #include"fileutils.h"
 #include "zlib.h"
 
+#include<sys/stat.h>
 #include<algorithm>
 #include<cstdint>
 #include <cstdio>
@@ -38,6 +39,8 @@
 #include<memory>
 
 #define CHUNK 16384
+
+namespace {
 
 void inflate_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
 void unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
@@ -159,12 +162,23 @@ void do_unpack(int compression_method, const unsigned char *data_start, uint32_t
     (*f)(data_start, data_size, ofile.get());
 }
 
-void unpack_entry(int compression_method, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+void set_permissions(const centralheader &ch, const std::string &fname) {
+    // This part of the zip spec is poorly documented. :(
+    // https://trac.edgewall.org/attachment/ticket/8919/ZipDownload.patch
+    chmod(fname.c_str(), ch.external_file_attributes >> 16);
+}
+
+}
+
+void unpack_entry(const localheader &lh,
+        const centralheader &ch,
+        const unsigned char *data_start, uint32_t data_size) {
     try {
-        do_unpack(compression_method, data_start, data_size, outname);
-        printf("OK: %s\n", outname.c_str());
+        do_unpack(lh.compression, data_start, data_size, lh.fname);
+        set_permissions(ch, lh.fname);
+        printf("OK: %s\n", lh.fname.c_str());
     } catch(const std::exception &e) {
-        printf("FAIL: %s\n", outname.c_str());
+        printf("FAIL: %s\n", lh.fname.c_str());
         printf("  %s\n", e.what());
     }
 

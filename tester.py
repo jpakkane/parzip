@@ -51,7 +51,8 @@ class TestUnzip(unittest.TestCase):
 
     def files_identical(self, fn1, fn2):
         self.file_content_identical(fn1, fn2)
-        self.file_metadata_identical(fn1, fn2)
+        # Python's zipfile does not preserve metadata. :(
+        # self.file_metadata_identical(fn1, fn2)
 
     def file_metadata_identical(self, fn1, fn2):
         stat1 = os.stat(fn1)
@@ -81,6 +82,18 @@ class TestUnzip(unittest.TestCase):
 
     def test_dir_entry(self):
         self.check_same('direntry.zip')
+
+    def test_unix_permissions(self):
+        # Python does not preserve file permissions. Do this manually.
+        # https://bugs.python.org/issue15795
+        zfile = os.path.join(datadir, "unixperms.zip")
+        with tempfile.TemporaryDirectory() as testdir:
+            with ZipFile(zfile) as zf:
+                subprocess.check_call([unzip_exe, zfile], cwd=testdir)
+                outfile = os.path.join(testdir, 'script.py')
+                os.path.join(testdir, 'script.py')
+                stats = os.stat(outfile)
+                self.assertEqual(stats.st_mode, 33261)
 
 if __name__ == '__main__':
     datadir = os.path.join(sys.argv[1], 'testdata')

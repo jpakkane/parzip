@@ -17,6 +17,9 @@
 
 #pragma once
 
+#include"zipdefs.h"
 #include<string>
 
-void unpack_entry(int compression_method, const unsigned char *data_start, uint32_t data_size, const std::string &outname);
+void unpack_entry(const localheader &lh,
+        const centralheader &ch,
+        const unsigned char *data_start, uint32_t data_size);

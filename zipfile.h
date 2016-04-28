@@ -33,8 +33,12 @@ public:
 
 private:
 
+    void readLocalFileHeaders();
+    void readCentralDirectory();
+
     File zipfile;
     std::vector<localheader> entries;
+    std::vector<centralheader> centrals;
     std::vector<long> data_offsets;
     size_t fsize;
 };

@@ -30,8 +30,6 @@
 #include<future>
 #include<thread>
 
-const constexpr int LOCAL_SIG = 0x04034b50;
-
 namespace {
 
 localheader read_local_entry(File &f) {
@@ -54,9 +52,54 @@ localheader read_local_entry(File &f) {
     return h;
 }
 
+centralheader read_central_entry(File &f) {
+    centralheader c;
+    uint16_t fname_length, extra_length, comment_length;
+    c.signature = CENTRAL_SIG;
+    c.version_made_by = f.read16le();
+    c.version_needed = f.read16le();
+    c.bit_flag = f.read16le();
+    c.compression_method = f.read16le();
+    c.last_mod_time = f.read16le();
+    c.last_mod_date = f.read16le();
+    f.read(&c.crc32, 4);
+    c.compressed_size = f.read32le();
+    c.uncompressed_size = f.read32le();
+    fname_length = f.read16le();
+    extra_length = f.read16le();
+    comment_length = f.read16le();
+    c.disk_number_start = f.read16le();
+    c.internal_file_attributes = f.read16le();
+    c.external_file_attributes = f.read32le();
+    c.local_header_rel_offset = f.read32le();
+
+    c.fname.insert(0, fname_length, 'a');
+    c.extra_field.insert(0, extra_length, 'b');
+    c.comment.insert(0, comment_length, 'c');
+    f.read(&(c.fname[0]), fname_length);
+    f.read(&(c.extra_field[0]), extra_length);
+    f.read(&(c.comment[0]), comment_length);
+    return c;
+}
+
 }
 
 ZipFile::ZipFile(const char *fname) : zipfile(fname, "r") {
+    readLocalFileHeaders();
+    readCentralDirectory();
+    if(entries.size() != centrals.size()) {
+        std::string msg("Mismatch. File has ");
+        msg += std::to_string(entries.size());
+        msg += " local entries but ";
+        msg += std::to_string(centrals.size());
+        msg += " central entries.";
+        throw std::runtime_error(msg);
+    }
+    zipfile.seek(0, SEEK_END);
+    fsize = zipfile.tell();
+}
+
+void ZipFile::readLocalFileHeaders() {
     while(true) {
         auto curloc = zipfile.tell();
         uint32_t head = zipfile.read32le();
@@ -71,8 +114,18 @@ ZipFile::ZipFile(const char *fname) : zipfile(fname, "r") {
             zipfile.seek(3*4, SEEK_CUR);
         }
     }
-    zipfile.seek(0, SEEK_END);
-    fsize = zipfile.tell();
+}
+
+void ZipFile::readCentralDirectory() {
+    while(true) {
+        auto curloc = zipfile.tell();
+        uint32_t head = zipfile.read32le();
+        if(head != CENTRAL_SIG) {
+            zipfile.seek(curloc);
+            break;
+        }
+        centrals.push_back(read_central_entry(zipfile));
+    }
 }
 
 void ZipFile::unzip() const {
@@ -92,10 +145,10 @@ void ZipFile::unzip() const {
     std::vector<std::future<void>> futures;
     for(size_t i=0; i<entries.size(); i++) {
         auto unstoretask = [this, file_start, i](){
-                unpack_entry(entries[i].compression,
+                unpack_entry(entries[i],
+                        centrals[i],
                         file_start + data_offsets[i],
-                        entries[i].compressed_size,
-                        entries[i].fname);
+                        entries[i].compressed_size);
                 };
         try {
             futures.emplace_back(std::async(std::launch::async, unstoretask));
