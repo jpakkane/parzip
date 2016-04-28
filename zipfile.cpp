@@ -34,7 +34,7 @@ namespace {
 
 localheader read_local_entry(File &f) {
     localheader h;
-    h.signature = LOCAL_SIG;
+    uint16_t fname_length, extra_length;
     h.needed_version = f.read16le();
     h.gp_bitflag = f.read16le();
     h.compression = f.read16le();
@@ -43,19 +43,18 @@ localheader read_local_entry(File &f) {
     f.read(&h.crc32, 4);
     h.compressed_size = f.read32le();
     h.uncompressed_size = f.read32le();
-    h.file_name_length = f.read16le();
-    h.extra_field_length = f.read16le();
-    h.fname.insert(0, h.file_name_length, 'a');
-    h.extra.insert(0, h.extra_field_length, 'b');
-    f.read(&(h.fname[0]), h.file_name_length);
-    f.read(&(h.extra[0]), h.extra_field_length);
+    fname_length = f.read16le();
+    extra_length = f.read16le();
+    h.fname.insert(0, fname_length, 'a');
+    h.extra.insert(0, extra_length, 'b');
+    f.read(&(h.fname[0]), fname_length);
+    f.read(&(h.extra[0]), extra_length);
     return h;
 }
 
 centralheader read_central_entry(File &f) {
     centralheader c;
     uint16_t fname_length, extra_length, comment_length;
-    c.signature = CENTRAL_SIG;
     c.version_made_by = f.read16le();
     c.version_needed = f.read16le();
     c.bit_flag = f.read16le();

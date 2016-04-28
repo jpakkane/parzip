@@ -27,7 +27,6 @@ const constexpr int LOCAL_SIG = 0x04034b50;
 const constexpr int CENTRAL_SIG = 0x02014b50;
 
 struct localheader {
-    uint32_t signature;
     uint16_t needed_version;
     uint16_t gp_bitflag;
     uint16_t compression;
@@ -36,14 +35,11 @@ struct localheader {
     uint8_t crc32[4];
     uint32_t compressed_size;
     uint32_t uncompressed_size;
-    uint16_t file_name_length;
-    uint16_t extra_field_length;
     std::string fname;
     std::string extra;
 };
 
 struct centralheader {
-    uint32_t signature;
     uint16_t version_made_by;
     uint16_t version_needed;
     uint16_t bit_flag;
