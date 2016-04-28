@@ -166,6 +166,8 @@ void set_permissions(const centralheader &ch, const std::string &fname) {
     // This part of the zip spec is poorly documented. :(
     // https://trac.edgewall.org/attachment/ticket/8919/ZipDownload.patch
     chmod(fname.c_str(), ch.external_file_attributes >> 16);
+    // Add mtime support at some point. It is even weirder.
+    // http://mindprod.com/jgloss/zip.html
 }
 
 }
