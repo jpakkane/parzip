@@ -26,7 +26,9 @@
 #include"zipdefs.h"
 #include"utils.h"
 #include"fileutils.h"
-#include "zlib.h"
+
+#include<lzma.h>
+#include<zlib.h>
 
 #include<utime.h>
 #include<sys/stat.h>
@@ -44,6 +46,7 @@
 namespace {
 
 void inflate_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
+void lzma_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
 void unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
 
 /* Decompress from file source to file dest until stream ends or EOF.
@@ -107,6 +110,58 @@ void inflate_to_file(const unsigned char *data_start, uint32_t data_size, FILE *
 */
 }
 
+void lzma_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile) {
+    unsigned char out[CHUNK];
+    lzma_stream strm = LZMA_STREAM_INIT;
+    lzma_filter filter[2];
+    unsigned int have;
+
+    size_t offset = 2;
+    uint16_t properties_size = le16toh(*reinterpret_cast<const uint16_t*>(data_start + offset));
+    offset+=2;
+    filter[0].id = LZMA_FILTER_LZMA1;
+    filter[1].id = LZMA_VLI_UNKNOWN;
+    lzma_ret ret = lzma_properties_decode(&filter[0], nullptr, data_start + offset, properties_size);
+    offset += properties_size;
+    if(ret != LZMA_OK) {
+        throw std::runtime_error("Could not decode LZMA properties.");
+    }
+    ret = lzma_raw_decoder(&strm, &filter[0]);
+    free(filter[0].options);
+    if(ret != LZMA_OK) {
+        throw std::runtime_error("Could not initialize LZMA decoder.");
+    }
+    std::unique_ptr<lzma_stream, void(*)(lzma_stream*)> lcloser(&strm, lzma_end);
+
+    const unsigned char *current = data_start + offset;
+    /* decompress until data ends */
+    do {
+        if(current >= data_start + data_size) {
+            break;
+        }
+        strm.avail_in = std::min((size_t)CHUNK, (size_t)(data_size - (current-data_start)));
+        if (strm.avail_in == 0)
+            break;
+        strm.next_in = current;
+        strm.next_out = out;
+
+        do {
+            strm.avail_out = CHUNK;
+            strm.next_out = out;
+            ret = lzma_code(&strm, LZMA_RUN);
+            if(ret != LZMA_OK && ret != LZMA_STREAM_END) {
+                throw std::runtime_error("Decompression failed.");
+            }
+            have = CHUNK - strm.avail_out;
+            if (fwrite(out, 1, have, ofile) != have || ferror(ofile)) {
+                throw_system("Could not write to file:");
+            }
+        } while (strm.avail_out == 0);
+        current += CHUNK;
+    } while (true);
+
+}
+
 
 void unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile) {
     auto bytes_written = fwrite(data_start, 1, data_size, ofile);
@@ -125,6 +180,8 @@ void do_unpack(int compression_method, const unsigned char *data_start, uint32_t
         f = unstore_to_file;
     } else if(compression_method == ZIP_DEFLATE) {
         f = inflate_to_file;
+    } else if(compression_method == ZIP_LZMA) {
+        f = lzma_to_file;
     } else {
         throw std::runtime_error("Unsupported compression format.");
     }
@@ -132,11 +189,16 @@ void do_unpack(int compression_method, const unsigned char *data_start, uint32_t
         throw std::runtime_error("Already exists, will not overwrite.");
     }
     create_dirs_for_file(outname);
-    std::unique_ptr<FILE, int(*)(FILE *f)> ofile(fopen(outname.c_str(), "wb"), fclose);
+    std::string extraction_name = outname + "$ZIPTMP";
+    std::unique_ptr<FILE, int(*)(FILE *f)> ofile(fopen(extraction_name.c_str(), "wb"), fclose);
     if(!ofile) {
         throw_system("Could not open input file:");
     }
     (*f)(data_start, data_size, ofile.get());
+    if(rename(extraction_name.c_str(), outname.c_str()) != 0) {
+        unlink(extraction_name.c_str());
+        throw_system("Could not rename tmp file to target file.");
+    }
 }
 
 void set_permissions(const localheader &lh, const centralheader &ch, const std::string &fname) {
@@ -169,5 +231,4 @@ void unpack_entry(const localheader &lh,
         printf("FAIL: %s\n", lh.fname.c_str());
         printf("  %s\n", e.what());
     }
-
 }

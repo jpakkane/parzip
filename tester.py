@@ -86,6 +86,9 @@ class TestUnzip(unittest.TestCase):
     def test_zip64(self):
         self.check_same('zip64.zip')
 
+    def test_lzma(self):
+        self.check_same('lzma.zip')
+
     def test_unix_permissions(self):
         # Python does not preserve file permissions. Do this manually.
         # https://bugs.python.org/issue15795

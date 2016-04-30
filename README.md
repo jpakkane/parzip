@@ -7,14 +7,15 @@ Licensed under GPLv3 or later.
 ## Supports
 
  - multithreading
- - deflate compression and stored files
+ - uncompressed files
+ - deflate and lzma compressed files
  - ZIP64 extensions (i.e. >4 GB files)
 
 ## Does not support
 
  - encryption (zip encryption is broken, use GPG instead)
  - ancient compression methods
- - VMS, Amiga or other non-modern platform
+ - VMS, Amiga or any other non-modern platform
 
 ## Contributions
 

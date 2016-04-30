@@ -22,6 +22,7 @@
 
 #define ZIP_NO_COMPRESSION 0
 #define ZIP_DEFLATE 8
+#define ZIP_LZMA 14
 
 #define ZIP_EXTRA_ZIP64 1
 #define ZIP_EXTRA_UNIX 0xd
