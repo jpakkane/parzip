@@ -23,8 +23,18 @@
 #define ZIP_NO_COMPRESSION 0
 #define ZIP_DEFLATE 8
 
+#define ZIP_EXTRA_ZIP64 1
+#define ZIP_EXTRA_UNIX 0xd
+
 const constexpr int LOCAL_SIG = 0x04034b50;
 const constexpr int CENTRAL_SIG = 0x02014b50;
+
+struct unixextra {
+    uint32_t atime;
+    uint32_t mtime;
+    uint16_t uid;
+    uint16_t gid;
+};
 
 struct localheader {
     uint16_t needed_version;
@@ -37,6 +47,7 @@ struct localheader {
     uint64_t uncompressed_size;
     std::string fname;
     std::string extra;
+    unixextra unix;
 };
 
 struct centralheader {

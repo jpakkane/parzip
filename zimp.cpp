@@ -28,6 +28,7 @@
 #include"fileutils.h"
 #include "zlib.h"
 
+#include<utime.h>
 #include<sys/stat.h>
 #include<algorithm>
 #include<cstdint>
@@ -138,12 +139,21 @@ void do_unpack(int compression_method, const unsigned char *data_start, uint32_t
     (*f)(data_start, data_size, ofile.get());
 }
 
-void set_permissions(const centralheader &ch, const std::string &fname) {
+void set_permissions(const localheader &lh, const centralheader &ch, const std::string &fname) {
     // This part of the zip spec is poorly documented. :(
     // https://trac.edgewall.org/attachment/ticket/8919/ZipDownload.patch
     chmod(fname.c_str(), ch.external_file_attributes >> 16);
-    // Add mtime support at some point. It is even weirder.
+    // Only support mtime if it is in zip64 info.
+    // FIXME add support for crazy zip dos format.
     // http://mindprod.com/jgloss/zip.html
+    if(lh.unix.atime != 0) {
+        // These can fail for various reasons (i.e. no chown privilegde), so ignore return values.
+        struct utimbuf tb;
+        tb.actime = lh.unix.atime;
+        tb.modtime = lh.unix.mtime;
+        utime(fname.c_str(), &tb);
+        chown(fname.c_str(), lh.unix.uid, lh.unix.gid);
+    }
 }
 
 }
@@ -153,7 +163,7 @@ void unpack_entry(const localheader &lh,
         const unsigned char *data_start, uint32_t data_size) {
     try {
         do_unpack(lh.compression, data_start, data_size, lh.fname);
-        set_permissions(ch, lh.fname);
+        set_permissions(lh, ch, lh.fname);
         printf("OK: %s\n", lh.fname.c_str());
     } catch(const std::exception &e) {
         printf("FAIL: %s\n", lh.fname.c_str());

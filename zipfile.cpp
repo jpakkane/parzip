@@ -40,7 +40,7 @@ void unpack_zip64_sizes(const std::string &extra_field, uint64_t &compressed_siz
         offset+=2;
         uint16_t data_size = le16toh(*reinterpret_cast<const uint16_t*>(&extra_field[offset]));
         offset+=2;
-        if(header_id == 1) {
+        if(header_id == ZIP_EXTRA_ZIP64) {
             uncompressed_size = le64toh(*reinterpret_cast<const uint64_t*>(&extra_field[offset]));
             offset += 8;
             compressed_size = le64toh(*reinterpret_cast<const uint64_t*>(&extra_field[offset]));
@@ -49,6 +49,29 @@ void unpack_zip64_sizes(const std::string &extra_field, uint64_t &compressed_siz
         offset += data_size;
     }
     throw std::runtime_error("Entry extra field did not contain ZIP64 extension, file can not be parsed.");
+}
+
+void unpack_unix(const std::string &extra, unixextra &unix) {
+    size_t offset = 0;
+    while(offset < extra.size()) {
+        uint16_t header_id = le16toh(*reinterpret_cast<const uint16_t*>(&extra[offset]));
+        offset+=2;
+        uint16_t data_size = le16toh(*reinterpret_cast<const uint16_t*>(&extra[offset]));
+        offset+=2;
+        if(header_id == ZIP_EXTRA_UNIX) {
+            unix.atime = le32toh(*reinterpret_cast<const uint32_t*>(&extra[offset]));
+            offset += 4;
+            unix.mtime = le32toh(*reinterpret_cast<const uint32_t*>(&extra[offset]));
+            offset += 4;
+            unix.uid = le16toh(*reinterpret_cast<const uint16_t*>(&extra[offset]));
+            offset += 2;
+            unix.gid = le16toh(*reinterpret_cast<const uint16_t*>(&extra[offset]));
+            offset += 2;
+            return;
+        }
+        offset += data_size;
+    }
+    unix.atime = 0;
 }
 
 localheader read_local_entry(File &f) {
@@ -71,6 +94,7 @@ localheader read_local_entry(File &f) {
     if(h.compressed_size == 0xFFFFFFFF || h.uncompressed_size == 0xFFFFFFFF) {
         unpack_zip64_sizes(h.extra, h.compressed_size, h.uncompressed_size);
     }
+    unpack_unix(h.extra, h.unix);
     return h;
 }
 
