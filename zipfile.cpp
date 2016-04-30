@@ -18,6 +18,7 @@
 #include"zipfile.h"
 #include"zimp.h"
 #include"utils.h"
+#include<endian.h>
 #include<sys/mman.h>
 #include<sys/stat.h>
 #include<fcntl.h>
@@ -31,6 +32,24 @@
 #include<thread>
 
 namespace {
+
+void unpack_zip64_sizes(const std::string &extra_field, uint64_t &compressed_size, uint64_t &uncompressed_size) {
+    size_t offset = 0;
+    while(offset < extra_field.size()) {
+        uint16_t header_id = le16toh(*reinterpret_cast<const uint16_t*>(&extra_field[offset]));
+        offset+=2;
+        uint16_t data_size = le16toh(*reinterpret_cast<const uint16_t*>(&extra_field[offset]));
+        offset+=2;
+        if(header_id == 1) {
+            uncompressed_size = le64toh(*reinterpret_cast<const uint64_t*>(&extra_field[offset]));
+            offset += 8;
+            compressed_size = le64toh(*reinterpret_cast<const uint64_t*>(&extra_field[offset]));
+            return;
+        }
+        offset += data_size;
+    }
+    throw std::runtime_error("Entry extra field did not contain ZIP64 extension, file can not be parsed.");
+}
 
 localheader read_local_entry(File &f) {
     localheader h;
@@ -49,6 +68,9 @@ localheader read_local_entry(File &f) {
     h.extra.insert(0, extra_length, 'b');
     f.read(&(h.fname[0]), fname_length);
     f.read(&(h.extra[0]), extra_length);
+    if(h.compressed_size == 0xFFFFFFFF || h.uncompressed_size == 0xFFFFFFFF) {
+        unpack_zip64_sizes(h.extra, h.compressed_size, h.uncompressed_size);
+    }
     return h;
 }
 
