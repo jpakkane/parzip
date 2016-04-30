@@ -7,15 +7,20 @@ Licensed under GPLv3 or later.
 ## Supports
 
  - multithreading
- - uncompressed files
- - deflate and lzma compressed files
+ - uncompressed (i.e. stored) files
+ - [deflate](http:zlib.net) and [lzma](http://7-zip.org/sdk.html) compressed files
  - ZIP64 extensions (i.e. >4 GB files)
+ - unix file attributes
 
 ## Does not support
 
  - encryption (zip encryption is broken, use GPG instead)
  - ancient compression methods
  - VMS, Amiga or any other non-modern platform
+
+## Maybe supports in the future
+
+ - creating ZIP files
 
 ## Contributions
 
