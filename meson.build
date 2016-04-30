@@ -5,4 +5,5 @@ zdep = dependency('zlib')
 lzmadep = dependency('liblzma')
 threaddep = dependency('threads')
 
+subdir('man')
 subdir('src')
