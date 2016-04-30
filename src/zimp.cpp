@@ -194,7 +194,13 @@ void do_unpack(int compression_method, const unsigned char *data_start, uint32_t
     if(!ofile) {
         throw_system("Could not open input file:");
     }
-    (*f)(data_start, data_size, ofile.get());
+    try {
+        (*f)(data_start, data_size, ofile.get());
+    } catch(...) {
+        unlink(extraction_name.c_str());
+        throw;
+    }
+
     if(rename(extraction_name.c_str(), outname.c_str()) != 0) {
         unlink(extraction_name.c_str());
         throw_system("Could not rename tmp file to target file.");
