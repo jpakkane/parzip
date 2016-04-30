@@ -1,5 +1,21 @@
 # jzip
 
-This project contains a simple zip file unpacker that uncompresses files in parallel.
+A command line utility to expand zip archives.
 
-Lots of stuff is not supported but feel free to try it out.
+Licensed under GPLv3 or later.
+
+## Supports
+
+ - multithreading
+ - deflate compression and stored files
+ - ZIP64 extensions (i.e. >4 GB files)
+
+## Does not support
+
+ - encryption (zip encryption is broken, use GPG instead)
+ - ancient compression methods
+ - VMS, Amiga or other non-modern platform
+
+## Contributions
+
+Please send patches as merge requests via the [Github project](https://github.com/jpakkane/jzip).
