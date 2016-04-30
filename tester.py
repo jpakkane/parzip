@@ -72,7 +72,7 @@ class TestUnzip(unittest.TestCase):
         self.check_same('basic.zip')
 
     def test_store(self):
-        self.check_same('basic.zip')
+        self.check_same('small.zip')
 
     def test_subdir(self):
         self.check_same('subdirs.zip')
