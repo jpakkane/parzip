@@ -152,7 +152,10 @@ void ZipFile::readLocalFileHeaders() {
             zipfile.seek(curloc);
             break;
         }
-        entries.push_back(read_local_entry(zipfile));
+        entries.emplace_back(read_local_entry(zipfile));
+        if(entries.back().gp_bitflag & 1) {
+            throw std::runtime_error("This file is encrypted. Encrypted ZIP archives are not supported.");
+        }
         data_offsets.push_back(zipfile.tell());
         zipfile.seek(entries.back().compressed_size, SEEK_CUR);
         if(entries.back().gp_bitflag & (1<<2)) {
