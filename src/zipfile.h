@@ -40,5 +40,9 @@ private:
     std::vector<localheader> entries;
     std::vector<centralheader> centrals;
     std::vector<long> data_offsets;
+
+    zip64endrecord z64end;
+    zip64locator z64loc;
+    endrecord endloc;
     size_t fsize;
 };

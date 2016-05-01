@@ -16,6 +16,7 @@ Licensed under GPLv3 or later.
 
  - encryption (zip encryption is broken, use GPG instead)
  - ancient compression methods
+ - archives split to multiple files
  - VMS, Amiga or any other non-modern platform
 
 ## Maybe supports in the future

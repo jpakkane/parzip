@@ -42,7 +42,9 @@ public:
     uint8_t read8();
     uint16_t read16le();
     uint32_t read32le();
+    uint64_t read64le();
     uint16_t read16be();
     uint32_t read32be();
+    uint64_t read64be();
     void read(void *buf, size_t bufsize);
 };

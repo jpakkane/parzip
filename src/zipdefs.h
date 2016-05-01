@@ -27,8 +27,12 @@
 #define ZIP_EXTRA_ZIP64 1
 #define ZIP_EXTRA_UNIX 0xd
 
-const constexpr int LOCAL_SIG = 0x04034b50;
-const constexpr int CENTRAL_SIG = 0x02014b50;
+const constexpr uint32_t LOCAL_SIG = 0x04034b50;
+const constexpr uint32_t CENTRAL_SIG = 0x02014b50;
+const constexpr uint32_t CENTRAL_END_SIG = 0x06054b50;
+const constexpr uint32_t ZIP64_CENTRAL_END_SIG = 0x06064b50;
+const constexpr uint32_t ZIP64_CENTRAL_LOCATOR_SIG = 0x07064b50;
+
 
 struct unixextra {
     uint32_t atime;
@@ -71,5 +75,34 @@ struct centralheader {
 
     std::string fname;
     std::string extra_field;
+    std::string comment;
+};
+
+struct zip64endrecord {
+    uint64_t recordsize;
+    uint16_t version_made_by;
+    uint16_t version_needed;
+    uint32_t disk_number;
+    uint32_t dir_start_disk_number;
+    uint64_t this_disk_num_entries;
+    uint64_t total_entries;
+    uint64_t dir_size;
+    uint64_t dir_offset;
+    std::string extensible;
+};
+
+struct zip64locator {
+    uint32_t central_dir_disk_number;
+    uint64_t central_dir_offset;
+    uint32_t num_disks;
+};
+
+struct endrecord {
+    uint16_t disk_number;
+    uint16_t central_dir_disk_number;
+    uint16_t this_disk_num_entries;
+    uint16_t total_entries;
+    uint32_t dir_size;
+    uint32_t dir_offset_start_disk;
     std::string comment;
 };

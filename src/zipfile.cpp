@@ -127,6 +127,46 @@ centralheader read_central_entry(File &f) {
     return c;
 }
 
+zip64endrecord read_z64_central_end(File &f) {
+    zip64endrecord er;
+    er.recordsize = f.read64le();
+    er.version_made_by = f.read16le();
+    er.version_needed = f.read16le();
+    er.disk_number = f.read32le();
+    er.dir_start_disk_number = f.read32le();
+    er.this_disk_num_entries = f.read64le();
+    er.total_entries = f.read64le();
+    er.dir_size = f.read64le();
+    er.dir_offset = f.read64le();
+    auto ext_size = er.recordsize - 2 - 2 - 4 - 4 - 8 - 8 - 8 - 8;
+    er.extensible.insert(0, ext_size, 'a');
+    f.read(&(er.extensible[0]), ext_size);
+    return er;
+}
+
+zip64locator read_z64_locator(File &f) {
+    zip64locator loc;
+    loc.central_dir_disk_number = f.read32le();
+    loc.central_dir_offset = f.read64le();
+    loc.num_disks = f.read32le();
+    return loc;
+}
+
+endrecord read_end_record(File &f) {
+    endrecord el;
+    el.disk_number = f.read16le();
+    el.central_dir_disk_number = f.read16le();
+    el.this_disk_num_entries = f.read16le();
+    el.total_entries = f.read16le();
+    el.dir_size = f.read32le();
+    el.dir_offset_start_disk = f.read32le();
+    auto csize = f.read16le();
+    el.comment.insert(0, csize, 'a');
+    f.read(&(el.comment[0]), csize);
+    return el;
+}
+
+
 }
 
 ZipFile::ZipFile(const char *fname) : zipfile(fname, "r") {
@@ -139,6 +179,25 @@ ZipFile::ZipFile(const char *fname) : zipfile(fname, "r") {
         msg += std::to_string(centrals.size());
         msg += " central entries.";
         throw std::runtime_error(msg);
+    }
+    auto id = zipfile.read32le();
+    if(id == ZIP64_CENTRAL_END_SIG) {
+        z64end = read_z64_central_end(zipfile);
+        if(z64end.total_entries != entries.size()) {
+            throw std::runtime_error("File is broken, zip64 directory has incorrect number of entries.");
+        }
+        id = zipfile.read32le();
+        if(id == ZIP64_CENTRAL_LOCATOR_SIG) {
+            z64loc = read_z64_locator(zipfile);
+            id = zipfile.read32le();
+        }
+    }
+    if(id != CENTRAL_END_SIG) {
+        throw std::runtime_error("Zip file broken, missing end locator.");
+    }
+    endloc = read_end_record(zipfile);
+    if(endloc.total_entries != entries.size()) {
+        throw std::runtime_error("Zip file broken, end record has incorrect directory size.");
     }
     zipfile.seek(0, SEEK_END);
     fsize = zipfile.tell();

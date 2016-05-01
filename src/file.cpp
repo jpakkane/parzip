@@ -75,6 +75,12 @@ uint32_t File::read32le() {
     return le32toh(r);
 }
 
+uint64_t File::read64le() {
+    uint64_t r;
+    read(&r, sizeof(r));
+    return le64toh(r);
+}
+
 uint16_t File::read16be() {
     uint16_t r;
     read(&r, sizeof(r));
@@ -86,4 +92,10 @@ uint32_t File::read32be() {
     uint32_t r;
     read(&r, sizeof(r));
     return be32toh(r);
+}
+
+uint64_t File::read64be() {
+    uint64_t r;
+    read(&r, sizeof(r));
+    return be64toh(r);
 }
