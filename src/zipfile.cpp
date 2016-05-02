@@ -76,6 +76,16 @@ void unpack_unix(const std::string &extra, unixextra &unix) {
     unix.atime = 0;
 }
 
+void check_filename(const std::string &fname) {
+    if(fname.size() == 0) {
+        throw std::runtime_error("Empty filename in directory");
+    }
+    if(fname.front() == '/' ||
+            (fname.size() > 2 && fname[1] == ':' && fname[2] == '/')) {
+        throw std::runtime_error("Archive has an absolute filename which is forbidden.");
+    }
+}
+
 localheader read_local_entry(File &f) {
     localheader h;
     uint16_t fname_length, extra_length;
@@ -97,6 +107,7 @@ localheader read_local_entry(File &f) {
         unpack_zip64_sizes(h.extra, h.compressed_size, h.uncompressed_size);
     }
     unpack_unix(h.extra, h.unix);
+    check_filename(h.fname);
     return h;
 }
 
