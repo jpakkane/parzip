@@ -177,20 +177,8 @@ void create_symlink(const unsigned char *data_start, uint32_t data_size, const s
     }
 }
 
-void do_unpack(const centralheader &ch, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+void create_file(const centralheader &ch, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
     decltype(unstore_to_file) *f;
-    uint16_t extattrs = ch.external_file_attributes >> 16;
-    if(S_ISDIR(extattrs)) {
-        mkdirp(outname);
-        return;
-    }
-    if(S_ISLNK(extattrs)) {
-        if(ch.compression_method != ZIP_NO_COMPRESSION) {
-            throw std::runtime_error("Symbolic link stored compressed. Not supported.");
-        }
-        create_symlink(data_start, data_size, outname);
-        return;
-    }
     if(ch.compression_method == ZIP_NO_COMPRESSION) {
         f = unstore_to_file;
     } else if(ch.compression_method == ZIP_DEFLATE) {
@@ -222,6 +210,36 @@ void do_unpack(const centralheader &ch, const unsigned char *data_start, uint32_
     }
 }
 
+void create_device(const localheader &lh, const std::string &outname) {
+    const std::string &d = lh.unix.data;
+    if(d.size() != 8) {
+        throw std::runtime_error("Incorrect extra data for character device.");
+    }
+    uint32_t major = le32toh(*reinterpret_cast<const uint32_t*>(&d[0]));
+    uint32_t minor = le32toh(*reinterpret_cast<const uint32_t*>(&d[4]));
+    if(mknod(outname.c_str(), S_IFCHR, makedev(major, minor)) != 0) {
+        throw_system("Could not create device node:");
+    }
+}
+
+void do_unpack(const localheader &lh, const centralheader &ch, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+    uint16_t extattrs = ch.external_file_attributes >> 16;
+    if(S_ISDIR(extattrs)) {
+        mkdirp(outname);
+    } else if(S_ISLNK(extattrs)) {
+        if(ch.compression_method != ZIP_NO_COMPRESSION) {
+            throw std::runtime_error("Symbolic link stored compressed. Not supported.");
+        }
+        create_symlink(data_start, data_size, outname);
+    } else if(S_ISCHR(extattrs)) {
+        create_device(lh, outname);
+    } else if(S_ISREG(extattrs)) {
+        create_file(ch, data_start, data_size, outname);
+    } else {
+        throw std::runtime_error("Unknown file type.");
+    }
+}
+
 void set_permissions(const localheader &lh, const centralheader &ch, const std::string &fname) {
     // This part of the zip spec is poorly documented. :(
     // https://trac.edgewall.org/attachment/ticket/8919/ZipDownload.patch
@@ -245,7 +263,7 @@ void unpack_entry(const localheader &lh,
         const centralheader &ch,
         const unsigned char *data_start, uint32_t data_size) {
     try {
-        do_unpack(ch, data_start, data_size, lh.fname);
+        do_unpack(lh, ch, data_start, data_size, lh.fname);
         set_permissions(lh, ch, lh.fname);
         printf("OK: %s\n", lh.fname.c_str());
     } catch(const std::exception &e) {
