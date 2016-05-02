@@ -170,17 +170,32 @@ void unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *
     }
 }
 
-void do_unpack(int compression_method, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+void create_symlink(const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+    std::string symlink_target(data_start, data_start + data_size);
+    if(symlink(symlink_target.c_str(), outname.c_str()) != 0) {
+        throw_system("Symlink creation failed:");
+    }
+}
+
+void do_unpack(const centralheader &ch, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
     decltype(unstore_to_file) *f;
-    if(outname.back() == '/') {
+    uint16_t extattrs = ch.external_file_attributes >> 16;
+    if(S_ISDIR(extattrs)) {
         mkdirp(outname);
         return;
     }
-    if(compression_method == ZIP_NO_COMPRESSION) {
+    if(S_ISLNK(extattrs)) {
+        if(ch.compression_method != ZIP_NO_COMPRESSION) {
+            throw std::runtime_error("Symbolic link stored compressed. Not supported.");
+        }
+        create_symlink(data_start, data_size, outname);
+        return;
+    }
+    if(ch.compression_method == ZIP_NO_COMPRESSION) {
         f = unstore_to_file;
-    } else if(compression_method == ZIP_DEFLATE) {
+    } else if(ch.compression_method == ZIP_DEFLATE) {
         f = inflate_to_file;
-    } else if(compression_method == ZIP_LZMA) {
+    } else if(ch.compression_method == ZIP_LZMA) {
         f = lzma_to_file;
     } else {
         throw std::runtime_error("Unsupported compression format.");
@@ -230,7 +245,7 @@ void unpack_entry(const localheader &lh,
         const centralheader &ch,
         const unsigned char *data_start, uint32_t data_size) {
     try {
-        do_unpack(lh.compression, data_start, data_size, lh.fname);
+        do_unpack(ch, data_start, data_size, lh.fname);
         set_permissions(lh, ch, lh.fname);
         printf("OK: %s\n", lh.fname.c_str());
     } catch(const std::exception &e) {

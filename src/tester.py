@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import os, sys, unittest, tempfile, subprocess
+import os, sys, stat, unittest, tempfile, subprocess
 from zipfile import ZipFile
 
 datadir = None
@@ -97,9 +97,21 @@ class TestUnzip(unittest.TestCase):
             with ZipFile(zfile) as zf:
                 subprocess.check_call([unzip_exe, zfile], cwd=testdir)
                 outfile = os.path.join(testdir, 'script.py')
-                os.path.join(testdir, 'script.py')
                 stats = os.stat(outfile)
                 self.assertEqual(stats.st_mode, 33261)
+
+    def test_symlink(self):
+        zfile = os.path.join(datadir, "symlink.zip")
+        with tempfile.TemporaryDirectory() as testdir:
+            with ZipFile(zfile) as zf:
+                subprocess.check_call([unzip_exe, zfile], cwd=testdir)
+                outfile = os.path.join(testdir, 'source.txt')
+                outsymlink = os.path.join(testdir, 'symlink.txt')
+                fstats = os.lstat(outfile)
+                lstats = os.lstat(outsymlink)
+                self.assertTrue(stat.S_ISREG(fstats.st_mode))
+                self.assertTrue(stat.S_ISLNK(lstats.st_mode))
+                self.assertEqual(os.readlink(outsymlink), 'source.txt')
 
 if __name__ == '__main__':
     datadir = os.path.join(sys.argv[1], 'testdata')
