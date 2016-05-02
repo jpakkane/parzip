@@ -39,6 +39,7 @@ struct unixextra {
     uint32_t mtime;
     uint16_t uid;
     uint16_t gid;
+    std::string data;
 };
 
 struct localheader {

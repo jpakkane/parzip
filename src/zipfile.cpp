@@ -58,6 +58,7 @@ void unpack_unix(const std::string &extra, unixextra &unix) {
         offset+=2;
         uint16_t data_size = le16toh(*reinterpret_cast<const uint16_t*>(&extra[offset]));
         offset+=2;
+        auto extra_end = offset + data_size;
         if(header_id == ZIP_EXTRA_UNIX) {
             unix.atime = le32toh(*reinterpret_cast<const uint32_t*>(&extra[offset]));
             offset += 4;
@@ -67,6 +68,7 @@ void unpack_unix(const std::string &extra, unixextra &unix) {
             offset += 2;
             unix.gid = le16toh(*reinterpret_cast<const uint16_t*>(&extra[offset]));
             offset += 2;
+            unix.data = std::string(&extra[offset], &extra[extra_end]);
             return;
         }
         offset += data_size;
