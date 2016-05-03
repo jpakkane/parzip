@@ -209,7 +209,7 @@ ZipFile::ZipFile(const char *fname) : zipfile(fname, "r") {
         throw std::runtime_error("Zip file broken, missing end locator.");
     }
     endloc = read_end_record(zipfile);
-    if(endloc.total_entries != entries.size()) {
+    if(endloc.total_entries != 0xFFFF && endloc.total_entries != entries.size()) {
         throw std::runtime_error("Zip file broken, end record has incorrect directory size.");
     }
     zipfile.seek(0, SEEK_END);
