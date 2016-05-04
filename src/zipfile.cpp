@@ -30,6 +30,7 @@
 #include<memory>
 #include<future>
 #include<thread>
+#include<algorithm>
 
 namespace {
 
@@ -179,6 +180,21 @@ endrecord read_end_record(File &f) {
     return el;
 }
 
+void wait_for_slot(std::vector<std::future<void>> &entries, const int num_threads) {
+    if((int)entries.size() < num_threads)
+        return;
+    while(true) {
+        auto finished = std::find_if(entries.begin(), entries.end(), [](const std::future<void> &e) {
+            return e.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
+        });
+        if(finished != entries.end()) {
+            entries.erase(finished);
+            return;
+        }
+        std::this_thread::yield();
+    }
+}
+
 
 }
 
@@ -249,6 +265,7 @@ void ZipFile::readCentralDirectory() {
 }
 
 void ZipFile::unzip() const {
+    const int num_threads = std::max((int)std::thread::hardware_concurrency(), 1);
     int fd = zipfile.fileno();
     if(fd < 0) {
         throw_system("Could not open zip file:");
@@ -261,20 +278,16 @@ void ZipFile::unzip() const {
         throw_system("Could not mmap zip file:");
     }
     unsigned char *file_start = (unsigned char*)(data.get());
-    // Clearing will call all destructors, so all tasks will get run.
     std::vector<std::future<void>> futures;
+    futures.reserve(num_threads);
     for(size_t i=0; i<entries.size(); i++) {
+        wait_for_slot(futures, num_threads);
         auto unstoretask = [this, file_start, i](){
                 unpack_entry(entries[i],
                         centrals[i],
                         file_start + data_offsets[i],
                         entries[i].compressed_size);
                 };
-        try {
-            futures.emplace_back(std::async(std::launch::async, unstoretask));
-        } catch(const std::system_error &) {
-            futures.clear();
-            futures.emplace_back(std::async(std::launch::async, unstoretask));
-        }
+        futures.emplace_back(std::async(std::launch::async, unstoretask));
     }
 }
