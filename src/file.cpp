@@ -99,3 +99,9 @@ uint64_t File::read64be() {
     read(&r, sizeof(r));
     return be64toh(r);
 }
+
+std::string File::read(size_t bufsize) {
+    std::string buf(bufsize, 'X');
+    read(&buf[0], bufsize);
+    return buf;
+}

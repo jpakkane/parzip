@@ -48,7 +48,7 @@ struct localheader {
     uint16_t compression;
     uint16_t last_mod_time;
     uint16_t last_mod_date;
-    uint8_t crc32[4];
+    std::string crc32;
     uint64_t compressed_size; // On disk header format is 32 bits, but this is 64 bits to be able to store zip64 offsets, too.
     uint64_t uncompressed_size;
     std::string fname;
@@ -63,7 +63,7 @@ struct centralheader {
     uint16_t compression_method;
     uint16_t last_mod_time;
     uint16_t last_mod_date;
-    uint8_t crc32[4];
+    std::string crc32;
     uint32_t compressed_size;
     uint32_t uncompressed_size;
     //file name length                2 bytes

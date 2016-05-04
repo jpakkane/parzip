@@ -95,15 +95,13 @@ localheader read_local_entry(File &f) {
     h.compression = f.read16le();
     h.last_mod_time = f.read16le();
     h.last_mod_date = f.read16le();
-    f.read(&h.crc32, 4);
+    h.crc32 = f.read(4);
     h.compressed_size = f.read32le();
     h.uncompressed_size = f.read32le();
     fname_length = f.read16le();
     extra_length = f.read16le();
-    h.fname.insert(0, fname_length, 'a');
-    h.extra.insert(0, extra_length, 'b');
-    f.read(&(h.fname[0]), fname_length);
-    f.read(&(h.extra[0]), extra_length);
+    h.fname = f.read(fname_length);
+    h.extra = f.read(extra_length);
     if(h.compressed_size == 0xFFFFFFFF || h.uncompressed_size == 0xFFFFFFFF) {
         unpack_zip64_sizes(h.extra, h.compressed_size, h.uncompressed_size);
     }
@@ -121,7 +119,7 @@ centralheader read_central_entry(File &f) {
     c.compression_method = f.read16le();
     c.last_mod_time = f.read16le();
     c.last_mod_date = f.read16le();
-    f.read(&c.crc32, 4);
+    c.crc32 = f.read(4);
     c.compressed_size = f.read32le();
     c.uncompressed_size = f.read32le();
     fname_length = f.read16le();
@@ -132,12 +130,9 @@ centralheader read_central_entry(File &f) {
     c.external_file_attributes = f.read32le();
     c.local_header_rel_offset = f.read32le();
 
-    c.fname.insert(0, fname_length, 'a');
-    c.extra_field.insert(0, extra_length, 'b');
-    c.comment.insert(0, comment_length, 'c');
-    f.read(&(c.fname[0]), fname_length);
-    f.read(&(c.extra_field[0]), extra_length);
-    f.read(&(c.comment[0]), comment_length);
+    c.fname = f.read(fname_length);
+    c.extra_field = f.read(extra_length);
+    c.comment = f.read(comment_length);
     return c;
 }
 
@@ -153,8 +148,7 @@ zip64endrecord read_z64_central_end(File &f) {
     er.dir_size = f.read64le();
     er.dir_offset = f.read64le();
     auto ext_size = er.recordsize - 2 - 2 - 4 - 4 - 8 - 8 - 8 - 8;
-    er.extensible.insert(0, ext_size, 'a');
-    f.read(&(er.extensible[0]), ext_size);
+    er.extensible = f.read(ext_size);
     return er;
 }
 
@@ -175,8 +169,7 @@ endrecord read_end_record(File &f) {
     el.dir_size = f.read32le();
     el.dir_offset_start_disk = f.read32le();
     auto csize = f.read16le();
-    el.comment.insert(0, csize, 'a');
-    f.read(&(el.comment[0]), csize);
+    el.comment = f.read(csize);
     return el;
 }
 

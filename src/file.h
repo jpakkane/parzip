@@ -24,6 +24,7 @@ class File final {
 private:
 
     FILE *f;
+    void read(void *buf, size_t bufsize);
 
 public:
 
@@ -46,5 +47,5 @@ public:
     uint16_t read16be();
     uint32_t read32be();
     uint64_t read64be();
-    void read(void *buf, size_t bufsize);
+    std::string read(size_t bufsize);
 };
