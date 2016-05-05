@@ -120,5 +120,7 @@ if __name__ == '__main__':
         datadir = os.path.join(os.getcwd(), datadir)
     if not os.path.isabs(unzip_exe):
         unzip_exe = os.path.join(os.getcwd(), unzip_exe)
+    assert(os.path.isdir(datadir))
+    assert(os.path.isfile(unzip_exe))
     sys.argv = sys.argv[0:1] + sys.argv[3:]
     unittest.main()

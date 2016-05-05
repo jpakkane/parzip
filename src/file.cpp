@@ -17,7 +17,8 @@
 
 #include"file.h"
 #include"utils.h"
-#include"endian.h"
+#include<endian.h>
+#include<sys/stat.h>
 #include<cassert>
 
 File::File(const std::string &fname, const char *mode) {
@@ -104,4 +105,18 @@ std::string File::read(size_t bufsize) {
     std::string buf(bufsize, 'X');
     read(&buf[0], bufsize);
     return buf;
+}
+
+uint64_t File::size() const {
+    struct stat buf;
+    if(fstat(fileno(), &buf) != 0) {
+        throw_system("Statting self failed:");
+    }
+    return buf.st_size;
+}
+
+void File::flush() {
+    if(fflush(f) != 0) {
+        throw_system("Flushing data failed:");
+    }
 }

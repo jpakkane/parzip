@@ -36,9 +36,13 @@ public:
     File(const std::string &fname, const char *mode);
     File(FILE *opened);
 
+    FILE* get() const { return f; }
     long tell();
     int seek(long offset, int whence=SEEK_SET);
     int fileno() const;
+
+    uint64_t size() const;
+    void flush();
 
     uint8_t read8();
     uint16_t read16le();

@@ -18,7 +18,6 @@ Licensed under GPLv3 or later.
  - ancient compression methods
  - archives split to multiple files
  - VMS, Amiga or any other non-modern platform
- - CRC checksums are not validated
 
 ## Maybe supports in the future
 

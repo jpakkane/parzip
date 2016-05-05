@@ -266,10 +266,10 @@ void ZipFile::unzip() const {
     auto unmapper = [&](void* d) { munmap(d, fsize); };
     std::unique_ptr<void, decltype(unmapper)> data(mmap(nullptr, fsize, PROT_READ, MAP_PRIVATE, fd, 0),
             unmapper);
-    close(fd);
-    if(!data) {
+    if(data.get() == MAP_FAILED) {
         throw_system("Could not mmap zip file:");
     }
+
     unsigned char *file_start = (unsigned char*)(data.get());
     std::vector<std::future<void>> futures;
     futures.reserve(num_threads);

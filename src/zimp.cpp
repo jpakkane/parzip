@@ -26,6 +26,7 @@
 #include"zipdefs.h"
 #include"utils.h"
 #include"fileutils.h"
+#include"file.h"
 
 #include<lzma.h>
 #include<zlib.h>
@@ -177,7 +178,7 @@ void create_symlink(const unsigned char *data_start, uint32_t data_size, const s
     }
 }
 
-void create_file(const centralheader &ch, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+void create_file(const localheader &lh, const centralheader &ch, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
     decltype(unstore_to_file) *f;
     if(ch.compression_method == ZIP_NO_COMPRESSION) {
         f = unstore_to_file;
@@ -193,17 +194,23 @@ void create_file(const centralheader &ch, const unsigned char *data_start, uint3
     }
     create_dirs_for_file(outname);
     std::string extraction_name = outname + "$ZIPTMP";
-    std::unique_ptr<FILE, int(*)(FILE *f)> ofile(fopen(extraction_name.c_str(), "wb"), fclose);
-    if(!ofile) {
-        throw_system("Could not open input file:");
-    }
+    File ofile(extraction_name.c_str(), "w+b");
     try {
         (*f)(data_start, data_size, ofile.get());
     } catch(...) {
         unlink(extraction_name.c_str());
         throw;
     }
+    ofile.flush();
 
+    const std::string &original = lh.gp_bitflag&(1<<2) ? ch.crc32 : lh.crc32;
+    auto crc32 = CRC32(ofile);
+    if(crc32 != original) {
+        printf("%d %d\n", *reinterpret_cast<const uint32_t*>(original.data()),
+                *reinterpret_cast<const uint32_t*>(crc32.data()));
+        unlink(extraction_name.c_str());
+        throw std::runtime_error("XXX CRC32 checksum is invalid: " + lh.fname);
+    }
     if(rename(extraction_name.c_str(), outname.c_str()) != 0) {
         unlink(extraction_name.c_str());
         throw_system("Could not rename tmp file to target file.");
@@ -234,7 +241,7 @@ void do_unpack(const localheader &lh, const centralheader &ch, const unsigned ch
     } else if(S_ISCHR(extattrs)) {
         create_device(lh, outname);
     } else if(S_ISREG(extattrs)) {
-        create_file(ch, data_start, data_size, outname);
+        create_file(lh, ch, data_start, data_size, outname);
     } else {
         throw std::runtime_error("Unknown file type.");
     }

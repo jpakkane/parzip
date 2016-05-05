@@ -17,5 +17,13 @@
 
 #pragma once
 
+#include"file.h"
+
+#include<string>
+#include<cstdint>
+#include<cstdio>
+
 void throw_system(const char *msg);
 
+std::string CRC32(const unsigned char *buf, uint64_t bufsize);
+std::string CRC32(File &f);

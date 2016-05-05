@@ -67,6 +67,8 @@ void mkdirp(const std::string &s) {
     assert(is_dir(s));
 }
 
+
+
 void create_dirs_for_file(const std::string &s) {
     auto lastslash = s.rfind('/');
     if(lastslash == std::string::npos || lastslash == 0) {
