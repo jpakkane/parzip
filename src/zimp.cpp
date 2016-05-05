@@ -279,5 +279,8 @@ void unpack_entry(const localheader &lh,
     } catch(const std::exception &e) {
         printf("FAIL: %s\n", lh.fname.c_str());
         printf("  %s\n", e.what());
+    } catch(...) {
+        printf("FAIL: %s\n", lh.fname.c_str());
+        printf("  unknown error\n");
     }
 }
