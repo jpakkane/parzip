@@ -46,9 +46,9 @@
 
 namespace {
 
-void inflate_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
-void lzma_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
-void unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
+std::string inflate_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
+std::string lzma_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
+std::string unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
 
 /* Decompress from file source to file dest until stream ends or EOF.
    inf() returns Z_OK on success, Z_MEM_ERROR if memory could not be
@@ -56,7 +56,8 @@ void unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *
    invalid or incomplete, Z_VERSION_ERROR if the version of zlib.h and
    the version of the library linked do not match, or Z_ERRNO if there
    is an error reading or writing the files. */
-void inflate_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile) {
+std::string inflate_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile) {
+    uint32_t crcvalue = crc32(0, Z_NULL, 0);
     int ret;
     unsigned have;
     z_stream strm;
@@ -97,6 +98,7 @@ void inflate_to_file(const unsigned char *data_start, uint32_t data_size, FILE *
                 throw std::runtime_error(strm.msg);
             }
             have = CHUNK - strm.avail_out;
+            crcvalue = crc32(crcvalue, out, have);
             if (fwrite(out, 1, have, ofile) != have || ferror(ofile)) {
                 throw_system("Could not write to file:");
             }
@@ -109,9 +111,11 @@ void inflate_to_file(const unsigned char *data_start, uint32_t data_size, FILE *
         throw std::runtime_error("Decompression failed.");
     }
 */
+    return crc_to_string(crcvalue);
 }
 
-void lzma_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile) {
+std::string lzma_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile) {
+    uint32_t crcvalue = crc32(0, Z_NULL, 0);
     unsigned char out[CHUNK];
     lzma_stream strm = LZMA_STREAM_INIT;
     lzma_filter filter[2];
@@ -154,21 +158,23 @@ void lzma_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofi
                 throw std::runtime_error("Decompression failed.");
             }
             have = CHUNK - strm.avail_out;
+            crcvalue = crc32(crcvalue, out, have);
             if (fwrite(out, 1, have, ofile) != have || ferror(ofile)) {
                 throw_system("Could not write to file:");
             }
         } while (strm.avail_out == 0);
         current += CHUNK;
     } while (true);
-
+    return crc_to_string(crcvalue);
 }
 
 
-void unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile) {
+std::string unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile) {
     auto bytes_written = fwrite(data_start, 1, data_size, ofile);
     if(bytes_written != data_size) {
         throw_system("Could not write file fully:");
     }
+    return CRC32(data_start, data_size);
 }
 
 void create_symlink(const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
@@ -195,25 +201,22 @@ void create_file(const localheader &lh, const centralheader &ch, const unsigned 
     create_dirs_for_file(outname);
     std::string extraction_name = outname + "$ZIPTMP";
     File ofile(extraction_name.c_str(), "w+b");
+    std::string crc32;
     try {
-        (*f)(data_start, data_size, ofile.get());
+        crc32 = (*f)(data_start, data_size, ofile.get());
     } catch(...) {
         unlink(extraction_name.c_str());
         throw;
     }
-    ofile.flush();
 
     const std::string &original = lh.gp_bitflag&(1<<2) ? ch.crc32 : lh.crc32;
-    auto crc32 = CRC32(ofile);
     if(crc32 != original) {
-        printf("%d %d\n", *reinterpret_cast<const uint32_t*>(original.data()),
-                *reinterpret_cast<const uint32_t*>(crc32.data()));
         unlink(extraction_name.c_str());
-        throw std::runtime_error("XXX CRC32 checksum is invalid: " + lh.fname);
+        throw std::runtime_error("CRC32 checksum is invalid.");
     }
     if(rename(extraction_name.c_str(), outname.c_str()) != 0) {
         unlink(extraction_name.c_str());
-        throw_system("Could not rename tmp file to target file.");
+        throw_system("Could not rename tmp file to target file:");
     }
 }
 

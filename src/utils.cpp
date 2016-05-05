@@ -36,6 +36,11 @@ void throw_system(const char *msg) {
     throw std::runtime_error(error);
 }
 
+std::string crc_to_string(uint32_t d) {
+    // FIXME, endianness swap here?
+    const char *r = reinterpret_cast<const char*>(&d);
+    return std::string(r, r+4);
+}
 
 std::string CRC32(const unsigned char *buf, uint64_t bufsize) {
     uint32_t crcvalue = crc32(0, Z_NULL, 0);
@@ -43,10 +48,7 @@ std::string CRC32(const unsigned char *buf, uint64_t bufsize) {
     for(uint64_t offset=0; offset < bufsize; offset+=blocksize) {
         crcvalue = crc32(crcvalue, buf+offset, std::min(blocksize, bufsize-offset));
     }
-
-    // FIXME, endianness swap here?
-    const char *r = reinterpret_cast<const char*>(&crcvalue);
-    return std::string(r, r+4);
+    return crc_to_string(crcvalue);
 }
 
 #include<sys/mman.h>
