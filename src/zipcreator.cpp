@@ -22,7 +22,7 @@
 #include"zipdefs.h"
 #include"mmapper.h"
 
-#include<sys/sendfile.h>
+#include<sys/stat.h>
 
 #include<stdexcept>
 
@@ -88,6 +88,25 @@ void write_end_record(File &ofile, const endrecord &ed) {
     ofile.write(ed.comment);
 }
 
+struct statdata {
+    unixextra ue;
+    uint16_t mode;
+};
+
+statdata get_unix_stats(const std::string &fname) {
+    struct stat buf;
+    statdata sd;
+    if(lstat(fname.c_str(), &buf) != 0) {
+        throw_system("Could not get entry stats: ");
+    }
+    sd.ue.uid = buf.st_uid;
+    sd.ue.gid = buf.st_gid;
+    sd.ue.atime = buf.st_atim.tv_sec;
+    sd.ue.mtime = buf.st_mtim.tv_sec;
+    sd.mode = buf.st_mode;
+    return sd;
+}
+
 }
 
 ZipCreator::ZipCreator(const std::string fname) : fname(fname) {
@@ -99,6 +118,7 @@ void ZipCreator::create(const std::vector<std::string> &files) {
     endrecord ed;
     std::vector<centralheader> chs;
     for(const auto &ifname : files) {
+        auto stats = get_unix_stats(ifname);
         File ifile(ifname, "rb");
         localheader lh;
         centralheader ch;
@@ -114,17 +134,18 @@ void ZipCreator::create(const std::vector<std::string> &files) {
         write_file(ifile, ofile, lh);
 
         ch.version_made_by = MADE_BY_UNIX << 8 | NEEDED_VERSION;
-        ch.version_needed = NEEDED_VERSION;
-        ch.bit_flag = 0;
-        ch.compression_method = ZIP_NO_COMPRESSION;
-        ch.last_mod_time = 0;
-        ch.last_mod_date = 0;
+        ch.version_needed = lh.needed_version;
+        ch.bit_flag = lh.gp_bitflag;
+        ch.compression_method = lh.compression;
+        ch.last_mod_time = lh.last_mod_time;
+        ch.last_mod_date = lh.last_mod_date;
         ch.crc32 = lh.crc32;
-        ch.compressed_size = ch.uncompressed_size = lh.uncompressed_size;
+        ch.compressed_size = lh.compressed_size;
+        ch.uncompressed_size = lh.uncompressed_size;
         ch.fname = ifname;
         ch.disk_number_start = 0;
         ch.internal_file_attributes = 0;
-        ch.external_file_attributes = 0;
+        ch.external_file_attributes = uint32_t(stats.mode) << 16;
         ch.local_header_rel_offset = local_header_offset;
         chs.push_back(ch);
     }
