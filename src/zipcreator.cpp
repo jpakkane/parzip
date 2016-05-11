@@ -107,6 +107,24 @@ statdata get_unix_stats(const std::string &fname) {
     return sd;
 }
 
+template<typename C>
+void append_data(std::string &s, const C &c) {
+    s.append(reinterpret_cast<const char*>(&c), sizeof(C));
+}
+
+std::string pack_unix_extra(unixextra ue) {
+    const uint16_t tag = htole16(0x0d);
+    const uint16_t size = htole16(4+4+2+2);
+    std::string result;
+    append_data(result, tag);
+    append_data(result, size);
+    append_data(result, ue.atime);
+    append_data(result, ue.mtime);
+    append_data(result, ue.uid);
+    append_data(result, ue.gid);
+    return result;
+}
+
 }
 
 ZipCreator::ZipCreator(const std::string fname) : fname(fname) {
@@ -131,6 +149,7 @@ void ZipCreator::create(const std::vector<std::string> &files) {
         lh.crc32 = CRC32(ifile);
         lh.compressed_size = lh.uncompressed_size = ifile.size(); // FIXME ZIP64.
         lh.fname = ifname;
+        lh.extra = pack_unix_extra(stats.ue);
         write_file(ifile, ofile, lh);
 
         ch.version_made_by = MADE_BY_UNIX << 8 | NEEDED_VERSION;
