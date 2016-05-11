@@ -1,8 +1,18 @@
-executable('junzip',
-  'junzip.cpp', 'zipfile.cpp', 'decompress.cpp', 'fileutils.cpp',
-  'utils.cpp', 'file.cpp', 'mmapper.cpp',
-  install : true,
+zl = static_library('jzcore',
+  'zipfile.cpp',
+  'decompress.cpp',
+  'fileutils.cpp',
+  'utils.cpp',
+  'file.cpp',
+  'mmapper.cpp',
   dependencies : [zdep, lzmadep, threaddep]
+)
+
+executable('junzip',
+  'junzip.cpp',
+  link_with : zl,
+  install : true,
+  dependencies : threaddep,
 )
 
 test_exe = find_program('tester.py')
