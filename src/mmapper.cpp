@@ -16,6 +16,7 @@
  */
 
 #include<sys/mman.h>
+#include<fcntl.h>
 
 #include"mmapper.h"
 #include"utils.h"
@@ -23,7 +24,7 @@
 MMapper::MMapper(int fd, uint64_t size) : map_size(size) {
     addr = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
     if(addr == MAP_FAILED) {
-        throw_system("Could not mmap zip file:");
+        throw_system("Could not mmap file:");
     }
 }
 

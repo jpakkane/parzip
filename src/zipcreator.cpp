@@ -98,8 +98,8 @@ void ZipCreator::create(const std::vector<std::string> &files) {
     File ofile(fname, "wb");
     endrecord ed;
     std::vector<centralheader> chs;
-    for(const auto &f : files) {
-        File ifile(f, "rb");
+    for(const auto &ifname : files) {
+        File ifile(ifname, "rb");
         localheader lh;
         centralheader ch;
         uint64_t local_header_offset = ofile.tell();
@@ -108,9 +108,9 @@ void ZipCreator::create(const std::vector<std::string> &files) {
         lh.compression = ZIP_NO_COMPRESSION;
         lh.last_mod_date = 0;
         lh.last_mod_time = 0;
-        lh.crc32 = 0xFFFFFFFF;
+        lh.crc32 = CRC32(ifile);
         lh.compressed_size = lh.uncompressed_size = ifile.size(); // FIXME ZIP64.
-        lh.fname = f;
+        lh.fname = ifname;
         write_file(ifile, ofile, lh);
 
         ch.version_made_by = MADE_BY_UNIX << 8 | NEEDED_VERSION;
@@ -121,7 +121,7 @@ void ZipCreator::create(const std::vector<std::string> &files) {
         ch.last_mod_date = 0;
         ch.crc32 = lh.crc32;
         ch.compressed_size = ch.uncompressed_size = lh.uncompressed_size;
-        ch.fname = f;
+        ch.fname = ifname;
         ch.disk_number_start = 0;
         ch.internal_file_attributes = 0;
         ch.external_file_attributes = 0;

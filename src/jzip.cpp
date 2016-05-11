@@ -24,17 +24,18 @@
 #include"zipcreator.h"
 
 int main(int argc, char **argv) {
-    if(argc < 3 ) {
+    if(argc < 3) {
         printf("%s <zip file> <files to archive>\n", argv[0]);
         return 1;
     }
     if(exists_on_fs(argv[1])) {
-        printf("Output file already exists, will not overwrite.");
+        printf("Output file already exists, will not overwrite.\n");
         return 1;
     }
 
     std::vector<std::string> files;
     files.push_back(argv[2]);
+    // FIXME check for absolute paths.
     if(files.empty()) {
         printf("No input files listed.\n");
         return 1;
