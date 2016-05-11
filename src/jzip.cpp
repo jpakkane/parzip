@@ -16,23 +16,29 @@
  */
 
 #include<cstdio>
+#include<vector>
+#include<string>
 
-#include"zipfile.h"
+#include"zipcreator.h"
 
 int main(int argc, char **argv) {
-    if(argc != 2 ) {
-        printf("%s <zip file>\n", argv[0]);
+    if(argc < 3 ) {
+        printf("%s <zip file> <files to archive>\n", argv[0]);
         return 1;
     }
+
+    std::vector<std::string> files;
+    files.push_back(argv[2]);
     try {
-        ZipFile f(argv[1]);
-        f.unzip();
+        ZipCreator zc(argv[1]);
+        zc.create(files);
     } catch(std::exception &e) {
-        printf("Unpacking failed: %s\n", e.what());
+        printf("Zip creation failed: %s\n", e.what());
         return 1;
     } catch(...) {
-        printf("Unpacking failed due to an unknown reason.");
+        printf("Zip creation failed due to an unknown reason.");
         return 1;
     }
+    return 0;
     return 0;
 }

@@ -15,24 +15,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include<cstdio>
+#include"zipcreator.h"
+#include"fileutils.h"
 
-#include"zipfile.h"
+#include<stdexcept>
 
-int main(int argc, char **argv) {
-    if(argc != 2 ) {
-        printf("%s <zip file>\n", argv[0]);
-        return 1;
+ZipCreator::ZipCreator(const std::string fname) : fname(fname) {
+
+}
+
+void ZipCreator::create(const std::vector<std::string> &files) {
+    if(exists_on_fs(fname)) {
+        throw std::runtime_error("Output file already exists, will not overwrite.");
     }
-    try {
-        ZipFile f(argv[1]);
-        f.unzip();
-    } catch(std::exception &e) {
-        printf("Unpacking failed: %s\n", e.what());
-        return 1;
-    } catch(...) {
-        printf("Unpacking failed due to an unknown reason.");
-        return 1;
-    }
-    return 0;
 }

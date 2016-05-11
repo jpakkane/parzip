@@ -5,6 +5,7 @@ zl = static_library('jzcore',
   'utils.cpp',
   'file.cpp',
   'mmapper.cpp',
+  'zipcreator.cpp',
   dependencies : [zdep, lzmadep, threaddep]
 )
 
@@ -13,6 +14,13 @@ executable('junzip',
   link_with : zl,
   install : true,
   dependencies : threaddep,
+)
+
+executable('jzip',
+  'jzip.cpp',
+  link_with : zl,
+  install : true,
+  dependencies : threaddep
 )
 
 test_exe = find_program('tester.py')

@@ -15,24 +15,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include<cstdio>
+#pragma once
+#include<string>
+#include<vector>
 
-#include"zipfile.h"
+class ZipCreator final {
 
-int main(int argc, char **argv) {
-    if(argc != 2 ) {
-        printf("%s <zip file>\n", argv[0]);
-        return 1;
-    }
-    try {
-        ZipFile f(argv[1]);
-        f.unzip();
-    } catch(std::exception &e) {
-        printf("Unpacking failed: %s\n", e.what());
-        return 1;
-    } catch(...) {
-        printf("Unpacking failed due to an unknown reason.");
-        return 1;
-    }
-    return 0;
-}
+public:
+
+    ZipCreator(const std::string fname);
+
+    void create(const std::vector<std::string> &files);
+
+private:
+
+    std::string fname;
+
+};
