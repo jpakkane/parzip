@@ -17,6 +17,7 @@
 
 #include"file.h"
 #include"utils.h"
+#include"mmapper.h"
 #include<endian.h>
 #include<sys/stat.h>
 #include<cassert>
@@ -49,6 +50,10 @@ int File::seek(long offset, int whence) {
 
 int File::fileno() const {
     return ::fileno(f);
+}
+
+MMapper File::mmap() const {
+    return MMapper(fileno(), size());
 }
 
 void File::read(void *buf, size_t bufsize) {
@@ -120,3 +125,54 @@ void File::flush() {
         throw_system("Flushing data failed:");
     }
 }
+
+void File::write8(uint8_t i) {
+    write(reinterpret_cast<const unsigned char*>(&i), sizeof(i));
+}
+
+void File::write16le(uint16_t i) {
+    uint16_t c = htole16(i);
+    write(reinterpret_cast<const unsigned char*>(&c), sizeof(c));
+}
+
+void File::write32le(uint32_t i) {
+    uint32_t c = htole32(i);
+    write(reinterpret_cast<const unsigned char*>(&c), sizeof(c));
+
+}
+
+void File::write64le(uint64_t i) {
+    uint64_t c = htole64(i);
+    write(reinterpret_cast<const unsigned char*>(&c), sizeof(c));
+
+}
+
+void File::write16be(uint16_t i) {
+    uint16_t c = htobe16(i);
+    write(reinterpret_cast<const unsigned char*>(&c), sizeof(c));
+
+}
+
+void File::write32be(uint32_t i) {
+    uint32_t c = htobe32(i);
+    write(reinterpret_cast<const unsigned char*>(&c), sizeof(c));
+
+}
+
+void File::write64be(uint64_t i) {
+    uint64_t c = htobe64(i);
+    write(reinterpret_cast<const unsigned char*>(&c), sizeof(c));
+
+}
+
+void File::write(const std::string &s) {
+    this->write(reinterpret_cast<const unsigned char*>(s.data()), s.size());
+}
+
+void File::write(const unsigned char *s, uint64_t size) {
+    if(fwrite(s, 1, size, f) != size) {
+        throw_system("Could not write data:");
+    }
+
+}
+

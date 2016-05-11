@@ -28,9 +28,11 @@ public:
     MMapper& operator=(MMapper &&other);
     ~MMapper();
 
+    uint64_t size() const { return map_size; }
+
     operator unsigned char*() { return reinterpret_cast<unsigned char*>(addr); }
 
 private:
     void *addr;
-    uint64_t size;
+    uint64_t map_size;
 };

@@ -23,6 +23,7 @@ bool is_dir(const std::string &s);
 bool is_file(const std::string &s);
 bool exists_on_fs(const std::string &s);
 
+bool is_absolute_path(const std::string &fname);
 
 void mkdirp(const std::string &s);
 void create_dirs_for_file(const std::string &s);

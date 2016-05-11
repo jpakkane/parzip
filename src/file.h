@@ -20,6 +20,8 @@
 #include<cstdio>
 #include<string>
 
+class MMapper;
+
 class File final {
 private:
 
@@ -36,10 +38,14 @@ public:
     File(const std::string &fname, const char *mode);
     File(FILE *opened);
 
+    operator FILE*() { return f; }
+
     FILE* get() const { return f; }
     long tell();
     int seek(long offset, int whence=SEEK_SET);
     int fileno() const;
+
+    MMapper mmap() const;
 
     uint64_t size() const;
     void flush();
@@ -52,4 +58,14 @@ public:
     uint32_t read32be();
     uint64_t read64be();
     std::string read(size_t bufsize);
+
+    void write8(uint8_t i);
+    void write16le(uint16_t i);
+    void write32le(uint32_t i);
+    void write64le(uint64_t i);
+    void write16be(uint16_t i);
+    void write32be(uint32_t i);
+    void write64be(uint64_t);
+    void write(const std::string &s);
+    void write(const unsigned char *s, uint64_t size);
 };

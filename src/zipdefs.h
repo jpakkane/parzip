@@ -32,7 +32,9 @@ const constexpr uint32_t CENTRAL_SIG = 0x02014b50;
 const constexpr uint32_t CENTRAL_END_SIG = 0x06054b50;
 const constexpr uint32_t ZIP64_CENTRAL_END_SIG = 0x06064b50;
 const constexpr uint32_t ZIP64_CENTRAL_LOCATOR_SIG = 0x07064b50;
+const constexpr uint32_t NEEDED_VERSION = 63; // LZMA
 
+const constexpr uint16_t MADE_BY_UNIX = 3;
 
 struct unixextra {
     uint32_t atime;

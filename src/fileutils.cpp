@@ -76,3 +76,15 @@ void create_dirs_for_file(const std::string &s) {
     }
     mkdirp(s.substr(0, lastslash));
 }
+
+bool is_absolute_path(const std::string &fname) {
+    if(fname.empty()) {
+        return false;
+    }
+    if(fname.front() == '/' ||
+            (fname.size() > 2 && fname[1] == ':' && fname[2] == '/')) {
+        return true;
+    }
+    return false;
+
+}

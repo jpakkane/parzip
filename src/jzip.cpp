@@ -18,7 +18,9 @@
 #include<cstdio>
 #include<vector>
 #include<string>
+#include<unistd.h>
 
+#include"fileutils.h"
 #include"zipcreator.h"
 
 int main(int argc, char **argv) {
@@ -26,16 +28,26 @@ int main(int argc, char **argv) {
         printf("%s <zip file> <files to archive>\n", argv[0]);
         return 1;
     }
+    if(exists_on_fs(argv[1])) {
+        printf("Output file already exists, will not overwrite.");
+        return 1;
+    }
 
     std::vector<std::string> files;
     files.push_back(argv[2]);
+    if(files.empty()) {
+        printf("No input files listed.\n");
+        return 1;
+    }
+    ZipCreator zc(argv[1]);
     try {
-        ZipCreator zc(argv[1]);
         zc.create(files);
     } catch(std::exception &e) {
+        unlink(argv[1]);
         printf("Zip creation failed: %s\n", e.what());
         return 1;
     } catch(...) {
+        unlink(argv[1]);
         printf("Zip creation failed due to an unknown reason.");
         return 1;
     }

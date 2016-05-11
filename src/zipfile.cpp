@@ -17,6 +17,7 @@
 
 #include"zipfile.h"
 #include"utils.h"
+#include"fileutils.h"
 #include"mmapper.h"
 #include<endian.h>
 #include<sys/stat.h>
@@ -80,8 +81,7 @@ void check_filename(const std::string &fname) {
     if(fname.size() == 0) {
         throw std::runtime_error("Empty filename in directory");
     }
-    if(fname.front() == '/' ||
-            (fname.size() > 2 && fname[1] == ':' && fname[2] == '/')) {
+    if(is_absolute_path(fname)) {
         throw std::runtime_error("Archive has an absolute filename which is forbidden.");
     }
 }
@@ -214,7 +214,7 @@ ZipFile::ZipFile(const char *fname) : zipfile(fname, "r") {
         }
     }
     if(id != CENTRAL_END_SIG) {
-        throw std::runtime_error("Zip file broken, missing end locator.");
+        throw std::runtime_error("Zip file broken, missing end of central directory.");
     }
     endloc = read_end_record(zipfile);
     if(endloc.total_entries != 0xFFFF && endloc.total_entries != entries.size()) {

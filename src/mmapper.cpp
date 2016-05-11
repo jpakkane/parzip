@@ -20,7 +20,7 @@
 #include"mmapper.h"
 #include"utils.h"
 
-MMapper::MMapper(int fd, uint64_t size) : size(size) {
+MMapper::MMapper(int fd, uint64_t size) : map_size(size) {
     addr = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
     if(addr == MAP_FAILED) {
         throw_system("Could not mmap zip file:");
@@ -32,19 +32,19 @@ MMapper::MMapper(MMapper && other) {
         return;
     }
     this->addr = other.addr;
-    this->size = other.size;
+    this->map_size = other.map_size;
     other.addr = nullptr;
 }
 
 MMapper& MMapper::operator=(MMapper &&other) {
     if(&other != this) {
         this->addr = other.addr;
-        this->size = other.size;
+        this->map_size = other.map_size;
         other.addr = nullptr;
     }
     return *this;
 }
 
 MMapper::~MMapper() {
-    munmap(addr, size);
+    munmap(addr, map_size);
 }
