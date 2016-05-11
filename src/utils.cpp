@@ -16,6 +16,7 @@
  */
 
 #include"utils.h"
+#include"mmapper.h"
 
 #include<zlib.h>
 
@@ -36,30 +37,19 @@ void throw_system(const char *msg) {
     throw std::runtime_error(error);
 }
 
-std::string crc_to_string(uint32_t d) {
-    // FIXME, endianness swap here?
-    const char *r = reinterpret_cast<const char*>(&d);
-    return std::string(r, r+4);
-}
-
-std::string CRC32(const unsigned char *buf, uint64_t bufsize) {
+uint32_t CRC32(const unsigned char *buf, uint64_t bufsize) {
     uint32_t crcvalue = crc32(0, Z_NULL, 0);
     const uint64_t blocksize = 1024*1024;
     for(uint64_t offset=0; offset < bufsize; offset+=blocksize) {
         crcvalue = crc32(crcvalue, buf+offset, std::min(blocksize, bufsize-offset));
     }
-    return crc_to_string(crcvalue);
+    return crcvalue;
 }
 
 #include<sys/mman.h>
 #include<memory>
 
-std::string CRC32(File &f) {
-    auto fd = f.fileno();
-    auto fsize = f.size();
-
-    auto unmapper = [&](void* d) { munmap(d, fsize); };
-    std::unique_ptr<void, decltype(unmapper)> data(mmap(nullptr, fsize, PROT_READ, MAP_PRIVATE, fd, 0),
-            unmapper);
-    return CRC32(reinterpret_cast<const unsigned char*>(data.get()), fsize);
+uint32_t CRC32(File &f) {
+    MMapper mmap = f.mmap();
+    return CRC32(mmap, mmap.size());
 }

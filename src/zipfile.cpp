@@ -94,7 +94,7 @@ localheader read_local_entry(File &f) {
     h.compression = f.read16le();
     h.last_mod_time = f.read16le();
     h.last_mod_date = f.read16le();
-    h.crc32 = f.read(4);
+    h.crc32 = f.read32le();
     h.compressed_size = f.read32le();
     h.uncompressed_size = f.read32le();
     fname_length = f.read16le();
@@ -118,7 +118,7 @@ centralheader read_central_entry(File &f) {
     c.compression_method = f.read16le();
     c.last_mod_time = f.read16le();
     c.last_mod_date = f.read16le();
-    c.crc32 = f.read(4);
+    c.crc32 = f.read32le();
     c.compressed_size = f.read32le();
     c.uncompressed_size = f.read32le();
     fname_length = f.read16le();

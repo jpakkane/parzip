@@ -42,7 +42,7 @@ void write_file(const File &ifile, File &ofile, const localheader &lh) {
     ofile.write16le(lh.compression);
     ofile.write16le(lh.last_mod_time);
     ofile.write16le(lh.last_mod_date);
-    ofile.write(lh.crc32);
+    ofile.write32le(lh.crc32);
     ofile.write32le(lh.compressed_size);
     ofile.write32le(lh.uncompressed_size);
     ofile.write16le(lh.fname.size());
@@ -61,7 +61,7 @@ void write_central_header(File &ofile, const centralheader &ch) {
     ofile.write16le(ch.compression_method);
     ofile.write16le(ch.last_mod_time);
     ofile.write16le(ch.last_mod_date);
-    ofile.write(ch.crc32);
+    ofile.write32le(ch.crc32);
     ofile.write32le(ch.compressed_size);
     ofile.write32le(ch.uncompressed_size);
     ofile.write16le(ch.fname.size());
@@ -108,7 +108,7 @@ void ZipCreator::create(const std::vector<std::string> &files) {
         lh.compression = ZIP_NO_COMPRESSION;
         lh.last_mod_date = 0;
         lh.last_mod_time = 0;
-        lh.crc32 = "XXXX";
+        lh.crc32 = 0xFFFFFFFF;
         lh.compressed_size = lh.uncompressed_size = ifile.size(); // FIXME ZIP64.
         lh.fname = f;
         write_file(ifile, ofile, lh);
@@ -119,7 +119,7 @@ void ZipCreator::create(const std::vector<std::string> &files) {
         ch.compression_method = ZIP_NO_COMPRESSION;
         ch.last_mod_time = 0;
         ch.last_mod_date = 0;
-        ch.crc32 = "XXXX";
+        ch.crc32 = lh.crc32;
         ch.compressed_size = ch.uncompressed_size = lh.uncompressed_size;
         ch.fname = f;
         ch.disk_number_start = 0;
