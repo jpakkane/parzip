@@ -17,8 +17,8 @@
 
 #include"zipfile.h"
 #include"utils.h"
+#include"mmapper.h"
 #include<endian.h>
-#include<sys/mman.h>
 #include<sys/stat.h>
 #include<fcntl.h>
 #include<unistd.h>
@@ -26,7 +26,6 @@
 #include<cerrno>
 #include<cstring>
 #include<stdexcept>
-#include<memory>
 #include<future>
 #include<thread>
 #include<algorithm>
@@ -263,14 +262,9 @@ void ZipFile::unzip() const {
     if(fd < 0) {
         throw_system("Could not open zip file:");
     }
-    auto unmapper = [&](void* d) { munmap(d, fsize); };
-    std::unique_ptr<void, decltype(unmapper)> data(mmap(nullptr, fsize, PROT_READ, MAP_PRIVATE, fd, 0),
-            unmapper);
-    if(data.get() == MAP_FAILED) {
-        throw_system("Could not mmap zip file:");
-    }
+    MMapper map(fd, fsize);
 
-    unsigned char *file_start = (unsigned char*)(data.get());
+    unsigned char *file_start = map;
     std::vector<std::future<void>> futures;
     futures.reserve(num_threads);
     for(size_t i=0; i<entries.size(); i++) {

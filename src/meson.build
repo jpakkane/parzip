@@ -1,6 +1,6 @@
 executable('junzip',
   'junzip.cpp', 'zipfile.cpp', 'decompress.cpp', 'fileutils.cpp',
-  'utils.cpp', 'file.cpp',
+  'utils.cpp', 'file.cpp', 'mmapper.cpp',
   install : true,
   dependencies : [zdep, lzmadep, threaddep]
 )
