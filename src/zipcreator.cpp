@@ -24,6 +24,7 @@
 
 #include<sys/stat.h>
 
+#include<cassert>
 #include<stdexcept>
 
 namespace {
@@ -88,6 +89,27 @@ void write_end_record(File &ofile, const endrecord &ed) {
     ofile.write(ed.comment);
 }
 
+void write_z64_eod_record(File &ofile, const zip64endrecord &r) {
+    ofile.write32le(ZIP64_CENTRAL_END_SIG);
+    ofile.write64le(r.recordsize);
+    ofile.write16le(r.version_made_by);
+    ofile.write16le(r.version_needed);
+    ofile.write32le(r.disk_number);
+    ofile.write32le(r.dir_start_disk_number);
+    ofile.write64le(r.this_disk_num_entries);
+    ofile.write64le(r.total_entries);
+    ofile.write64le(r.dir_size);
+    ofile.write64le(r.dir_offset);
+    ofile.write(r.extensible);
+}
+
+void write_z64_eod_locator(File &ofile, const zip64locator &l) {
+    ofile.write32le(ZIP64_CENTRAL_LOCATOR_SIG);
+    ofile.write32le(l.central_dir_disk_number);
+    ofile.write64le(l.central_dir_offset);
+    ofile.write32le(l.num_disks);
+}
+
 struct statdata {
     unixextra ue;
     uint16_t mode;
@@ -112,16 +134,30 @@ void append_data(std::string &s, const C &c) {
     s.append(reinterpret_cast<const char*>(&c), sizeof(C));
 }
 
-std::string pack_unix_extra(unixextra ue) {
-    const uint16_t tag = htole16(0x0d);
-    const uint16_t size = htole16(4+4+2+2);
+std::string pack_zip64(uint64_t uncompressed_size, uint64_t compressed_size, uint64_t offset) {
+    const uint16_t tag = 0x01;
+    const uint16_t size = 8+8+8+4;
     std::string result;
-    append_data(result, tag);
-    append_data(result, size);
-    append_data(result, ue.atime);
-    append_data(result, ue.mtime);
-    append_data(result, ue.uid);
-    append_data(result, ue.gid);
+    append_data(result, htole16(tag));
+    append_data(result, htole16(size));
+    append_data(result, htole64(uncompressed_size));
+    append_data(result, htole64(compressed_size));
+    append_data(result, htole64(offset));
+    append_data(result, htole32(0));
+    assert(result.size() == size + 2*2);
+    return result;
+}
+
+std::string pack_unix_extra(unixextra ue) {
+    const uint16_t tag = 0x0d;
+    const uint16_t size = 4+4+2+2;
+    std::string result;
+    append_data(result, htole16(tag));
+    append_data(result, htole16(size));
+    append_data(result, htole32(ue.atime));
+    append_data(result, htole32(ue.mtime));
+    append_data(result, htole16(ue.uid));
+    append_data(result, htole16(ue.gid));
     return result;
 }
 
@@ -141,15 +177,18 @@ void ZipCreator::create(const std::vector<std::string> &files) {
         localheader lh;
         centralheader ch;
         uint64_t local_header_offset = ofile.tell();
+        uint64_t uncompressed_size = ifile.size();
+        uint64_t compressed_size = uncompressed_size;
         lh.needed_version = NEEDED_VERSION;
         lh.gp_bitflag = 0;
         lh.compression = ZIP_NO_COMPRESSION;
         lh.last_mod_date = 0;
         lh.last_mod_time = 0;
         lh.crc32 = CRC32(ifile);
-        lh.compressed_size = lh.uncompressed_size = ifile.size(); // FIXME ZIP64.
+        lh.compressed_size = lh.uncompressed_size = 0xFFFFFFFF;
         lh.fname = ifname;
-        lh.extra = pack_unix_extra(stats.ue);
+        lh.extra = pack_zip64(uncompressed_size, compressed_size, ifile.tell());
+        lh.extra += pack_unix_extra(stats.ue);
         write_file(ifile, ofile, lh);
 
         ch.version_made_by = MADE_BY_UNIX << 8 | NEEDED_VERSION;
@@ -173,11 +212,33 @@ void ZipCreator::create(const std::vector<std::string> &files) {
         write_central_header(ofile, ch);
     }
     uint64_t ch_end_offset = ofile.tell();
+
+    // ZIP64 eod record
+    zip64endrecord z64r;
+    z64r.recordsize = 2 + 2 + 4 + 4 + 8 + 8 + 8 + 8;
+    z64r.version_made_by = chs[0].version_made_by;
+    z64r.version_needed = NEEDED_VERSION;
+    z64r.disk_number = 0;
+    z64r.dir_start_disk_number = 0;
+    z64r.this_disk_num_entries = chs.size();
+    z64r.total_entries = chs.size();
+    z64r.dir_size = ch_end_offset - ch_offset;
+    z64r.dir_offset = ch_offset;
+    write_z64_eod_record(ofile, z64r);
+
+    // ZIP64 eod locator
+    zip64locator z64l;
+    z64l.central_dir_disk_number = 0;
+    z64l.central_dir_offset = ch_end_offset;
+    z64l.num_disks = 1;
+    write_z64_eod_locator(ofile, z64l);
+
+
     ed.disk_number = 0;
     ed.central_dir_disk_number = 0;
     ed.this_disk_num_entries = chs.size();
     ed.total_entries = chs.size();
-    ed.dir_size = ch_end_offset - ch_offset;
-    ed.dir_offset_start_disk = ch_offset;
+    ed.dir_size = 0xFFFFFFFF;
+    ed.dir_offset_start_disk = 0xFFFFFFFF;
     write_end_record(ofile, ed);
 }
