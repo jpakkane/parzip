@@ -16,7 +16,6 @@
  */
 
 #include"zipfile.h"
-#include"zimp.h"
 #include"utils.h"
 #include<endian.h>
 #include<sys/mman.h>
@@ -31,6 +30,7 @@
 #include<future>
 #include<thread>
 #include<algorithm>
+#include "decompress.h"
 
 namespace {
 

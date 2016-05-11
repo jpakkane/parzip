@@ -1,5 +1,5 @@
 executable('junzip',
-  'junzip.cpp', 'zipfile.cpp', 'zimp.cpp', 'fileutils.cpp',
+  'junzip.cpp', 'zipfile.cpp', 'decompress.cpp', 'fileutils.cpp',
   'utils.cpp', 'file.cpp',
   install : true,
   dependencies : [zdep, lzmadep, threaddep]

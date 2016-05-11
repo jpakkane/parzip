@@ -22,7 +22,8 @@
  *  Not copyrighted -- provided to the public domain
  *  Version 1.4  11 December 2005  Mark Adler */
 
-#include"zimp.h"
+#include "decompress.h"
+
 #include"zipdefs.h"
 #include"utils.h"
 #include"fileutils.h"
