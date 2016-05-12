@@ -20,6 +20,7 @@
 #include"file.h"
 #include"utils.h"
 #include"zipdefs.h"
+#include"compress.h"
 #include"mmapper.h"
 
 #include<sys/stat.h>
@@ -176,20 +177,21 @@ void ZipCreator::create(const std::vector<std::string> &files) {
         File ifile(ifname, "rb");
         localheader lh;
         centralheader ch;
+        auto compression_result = compress_entry(ifname);
         uint64_t local_header_offset = ofile.tell();
         uint64_t uncompressed_size = ifile.size();
-        uint64_t compressed_size = uncompressed_size;
+        uint64_t compressed_size = compression_result.f.size();
         lh.needed_version = NEEDED_VERSION;
         lh.gp_bitflag = 0;
-        lh.compression = ZIP_NO_COMPRESSION;
+        lh.compression = ZIP_LZMA;
         lh.last_mod_date = 0;
         lh.last_mod_time = 0;
-        lh.crc32 = CRC32(ifile);
+        lh.crc32 = compression_result.crc32;
         lh.compressed_size = lh.uncompressed_size = 0xFFFFFFFF;
         lh.fname = ifname;
-        lh.extra = pack_zip64(uncompressed_size, compressed_size, ifile.tell());
+        lh.extra = pack_zip64(uncompressed_size, compressed_size, local_header_offset);
         lh.extra += pack_unix_extra(stats.ue);
-        write_file(ifile, ofile, lh);
+        write_file(compression_result.f, ofile, lh);
 
         ch.version_made_by = MADE_BY_UNIX << 8 | NEEDED_VERSION;
         ch.version_needed = lh.needed_version;
@@ -233,7 +235,6 @@ void ZipCreator::create(const std::vector<std::string> &files) {
     z64l.central_dir_offset = ch_end_offset;
     z64l.num_disks = 1;
     write_z64_eod_locator(ofile, z64l);
-
 
     ed.disk_number = 0;
     ed.central_dir_disk_number = 0;

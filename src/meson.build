@@ -1,5 +1,6 @@
 zl = static_library('jzcore',
   'zipfile.cpp',
+  'compress.cpp',
   'decompress.cpp',
   'fileutils.cpp',
   'utils.cpp',
