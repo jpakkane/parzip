@@ -36,6 +36,14 @@ const constexpr uint32_t NEEDED_VERSION = 63; // LZMA
 
 const constexpr uint16_t MADE_BY_UNIX = 3;
 
+enum filetype {
+    FILE_ENTRY,
+    DIRECTORY_ENTRY,
+    SYMLINK_ENTRY,
+    CHARDEV_ENTRY,
+    UNKNOWN_ENTRY,
+};
+
 struct unixextra {
     uint32_t atime;
     uint32_t mtime;

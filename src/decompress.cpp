@@ -233,25 +233,42 @@ void create_device(const localheader &lh, const std::string &outname) {
     }
 }
 
-void do_unpack(const localheader &lh, const centralheader &ch, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
-    uint16_t extattrs = ch.external_file_attributes >> 16;
-    if(S_ISDIR(extattrs)) {
-        mkdirp(outname);
-    } else if(S_ISLNK(extattrs)) {
-        if(ch.compression_method != ZIP_NO_COMPRESSION) {
-            throw std::runtime_error("Symbolic link stored compressed. Not supported.");
+filetype detect_filetype(const localheader &lh, const centralheader &ch) {
+    if(ch.version_made_by>>8 == MADE_BY_UNIX) {
+        uint16_t extattrs = ch.external_file_attributes >> 16;
+        if(S_ISDIR(extattrs)) {
+            return DIRECTORY_ENTRY;
+        } else if(S_ISLNK(extattrs)) {
+            if(ch.compression_method != ZIP_NO_COMPRESSION) {
+                throw std::runtime_error("Symbolic link stored compressed. Not supported.");
+            }
+            return SYMLINK_ENTRY;
+        } else if(S_ISCHR(extattrs)) {
+            return CHARDEV_ENTRY;
+        } else if(S_ISREG(extattrs)) {
+            return FILE_ENTRY;
+        } else {
+            return UNKNOWN_ENTRY;
         }
-        create_symlink(data_start, data_size, outname);
-    } else if(S_ISCHR(extattrs)) {
-        create_device(lh, outname);
-    } else if(S_ISREG(extattrs)) {
-        create_file(lh, ch, data_start, data_size, outname);
-    } else {
-        throw std::runtime_error("Unknown file type.");
+    }
+    // Nothing much to do.
+    if(lh.fname.back() == '/') {
+        return DIRECTORY_ENTRY;
+    }
+    return FILE_ENTRY;
+}
+
+void do_unpack(const localheader &lh, const centralheader &ch, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+    switch(detect_filetype(lh, ch)) {
+    case DIRECTORY_ENTRY : mkdirp(outname); break;
+    case SYMLINK_ENTRY : create_symlink(data_start, data_size, outname); break;
+    case CHARDEV_ENTRY : create_device(lh, outname); break;
+    case FILE_ENTRY : create_file(lh, ch, data_start, data_size, outname); break;
+    default : throw std::runtime_error("Unknown file type.");
     }
 }
 
-void set_permissions(const localheader &lh, const centralheader &ch, const std::string &fname) {
+void set_unix_permissions(const localheader &lh, const centralheader &ch, const std::string &fname) {
     // This part of the zip spec is poorly documented. :(
     // https://trac.edgewall.org/attachment/ticket/8919/ZipDownload.patch
     chmod(fname.c_str(), ch.external_file_attributes >> 16);
@@ -275,7 +292,9 @@ void unpack_entry(const localheader &lh,
         const unsigned char *data_start, uint32_t data_size) {
     try {
         do_unpack(lh, ch, data_start, data_size, lh.fname);
-        set_permissions(lh, ch, lh.fname);
+        if(ch.version_made_by>>8 == MADE_BY_UNIX) {
+            set_unix_permissions(lh, ch, lh.fname);
+        }
         printf("OK: %s\n", lh.fname.c_str());
     } catch(const std::exception &e) {
         printf("FAIL: %s\n", lh.fname.c_str());
