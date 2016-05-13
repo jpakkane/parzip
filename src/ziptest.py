@@ -17,6 +17,7 @@
 
 
 import os, sys, stat, unittest, tempfile, subprocess
+import random
 from zipfile import ZipFile
 from unziptest import ZipTestBase
 
@@ -25,6 +26,7 @@ unzip_exe = None
 zip_exe = None
 
 class TestUnzip(ZipTestBase):
+
     def test_basic(self):
         zfile = 'zfile.zip'
         datafile = 'inputdata.txt'
@@ -39,6 +41,28 @@ class TestUnzip(ZipTestBase):
                 z.close()
                 os.unlink(zf_abs)
                 self.dirs_equal(packdir, unpackdir)
+
+    def test_big(self):
+        zfile = 'zfile.zip'
+        datafile = 'inputdata.txt'
+        msg = ['I', ' ', 'a', 'm', ' ', 's', 'o', 'm', 'e', ' ', 't', 'e', 'x', 't', ' ',
+               't', 'o', ' ', 'b', 'e', ' ', 'r', 'a', 'n', 'd', 'o', 'm', 'i', 's', 'e', 'd.']
+        with tempfile.TemporaryDirectory() as packdir:
+            with tempfile.TemporaryDirectory() as unpackdir:
+                with open(os.path.join(packdir, datafile), 'w') as dfile:
+                    for i in range(10000):
+                        random.shuffle(msg)
+                        dfile.write(''.join(msg)) # Big enough to cause more than one block of output.
+                subprocess.check_call([zip_exe, zfile, datafile], cwd=packdir)
+                zf_abs = os.path.join(packdir, zfile)
+                z = ZipFile(zf_abs)
+                z.extractall(unpackdir)
+                z.close()
+                os.unlink(zf_abs)
+                self.dirs_equal(packdir, unpackdir)
+
+    def test_abs(self):
+        self.assertNotEqual(subprocess.call([zip_exe, 'foobar.zip', __file__]), 0)
 
 if __name__ == '__main__':
     datadir = os.path.join(sys.argv[1], 'testdata')

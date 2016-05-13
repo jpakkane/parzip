@@ -34,8 +34,13 @@ int main(int argc, char **argv) {
     }
 
     std::vector<std::string> files;
-    files.push_back(argv[2]);
-    // FIXME check for absolute paths.
+    for(int i=2; i<argc; i++) {
+        files.push_back(argv[i]);
+        if(is_absolute_path(files.back())) {
+            printf("Absolute file names are forbidden in ZIP files.");
+            return 1;
+        }
+    }
     if(files.empty()) {
         printf("No input files listed.\n");
         return 1;
