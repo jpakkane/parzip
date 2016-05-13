@@ -180,9 +180,9 @@ void ZipCreator::create(const std::vector<std::string> &files) {
         auto compression_result = compress_entry(ifname);
         uint64_t local_header_offset = ofile.tell();
         uint64_t uncompressed_size = ifile.size();
-        uint64_t compressed_size = compression_result.f.size();
+        uint64_t compressed_size = compression_result.f.tell();
         lh.needed_version = NEEDED_VERSION;
-        lh.gp_bitflag = 0;
+        lh.gp_bitflag = 0x02; // LZMA EOS marker.
         lh.compression = ZIP_LZMA;
         lh.last_mod_date = 0;
         lh.last_mod_time = 0;

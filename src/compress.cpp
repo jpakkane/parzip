@@ -59,6 +59,9 @@ compressresult compress_entry(const std::string &s) {
         if(lzma_properties_encode(filter, (unsigned char*)x.data()) != LZMA_OK) {
             throw std::runtime_error("Could not encode filter properties.");
         }
+        result.f.write8(9); // This is what Python's lzma lib does. Copy it without understanding.
+        result.f.write8(4);
+        result.f.write16le(filter_size);
         result.f.write(x);
     }
     std::unique_ptr<lzma_stream, void(*)(lzma_stream*)> lcloser(&strm, lzma_end);
@@ -74,16 +77,15 @@ compressresult compress_entry(const std::string &s) {
             strm.avail_out = CHUNK;
             strm.next_out = out;
         }
-
         ret = lzma_code(&strm, action);
         if(strm.avail_out == 0 || ret == LZMA_STREAM_END) {
             size_t write_size = CHUNK - strm.avail_out;
             if (fwrite(out, 1, write_size, result.f) != write_size || ferror(result.f)) {
                 throw_system("Could not write to file:");
             }
+            strm.next_out = out;
+            strm.avail_out = CHUNK;
         }
-        strm.next_out = out;
-        strm.avail_out = CHUNK;
 
         if(ret != LZMA_OK) {
             if(ret == LZMA_STREAM_END) {
@@ -91,7 +93,7 @@ compressresult compress_entry(const std::string &s) {
             }
             throw std::runtime_error("Compression failed.");
         }
-    };
+    }
 
     fflush(result.f);
     return result;
