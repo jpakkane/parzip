@@ -200,6 +200,7 @@ void ZipCreator::create(const std::vector<fileinfo> &files) {
         ch.local_header_rel_offset = local_header_offset;
         ch.extra_field = lh.extra;
         chs.push_back(ch);
+        printf("OK: %s\n", i.fname.c_str());
     }
     uint64_t ch_offset = ofile.tell();
     for(const auto &ch : chs) {
