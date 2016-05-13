@@ -25,10 +25,13 @@
 
 #include<lzma.h>
 #include<cstdio>
+#include<sys/stat.h>
 
 #define CHUNK 16384
 
-compressresult compress_entry(const std::string &s) {
+namespace {
+
+compressresult compress_lzma(const std::string &s) {
     File infile(s, "rb");
     MMapper buf = infile.mmap();
     FILE *f = tmpfile();
@@ -37,7 +40,7 @@ compressresult compress_entry(const std::string &s) {
     if(!f) {
         throw_system("Could not create temp file: ");
     }
-    compressresult result{File(f), CRC32(buf, buf.size())};
+    compressresult result{File(f), FILE_ENTRY, CRC32(buf, buf.size())};
     lzma_options_lzma opt_lzma;
     lzma_stream strm = LZMA_STREAM_INIT;
     if(lzma_lzma_preset(&opt_lzma, LZMA_PRESET_DEFAULT)) {
@@ -97,4 +100,21 @@ compressresult compress_entry(const std::string &s) {
 
     fflush(result.f);
     return result;
+}
+
+compressresult create_dir(const std::string &f) {
+    compressresult r{nullptr, DIRECTORY_ENTRY, CRC32(reinterpret_cast<const unsigned char*>(&f), 0)};
+    return r;
+}
+
+}
+
+compressresult compress_entry(const fileinfo &f) {
+    if(S_ISREG(f.mode)) {
+        return compress_lzma(f.fname);
+    }
+    if(S_ISDIR(f.mode)) {
+        return create_dir(f.fname);
+    }
+    throw std::runtime_error("Unknown file type.");
 }

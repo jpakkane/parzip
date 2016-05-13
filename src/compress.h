@@ -24,7 +24,8 @@
 
 struct compressresult {
     File f;
+    filetype entrytype;
     uint32_t crc32;
 };
 
-compressresult compress_entry(const std::string &s);
+compressresult compress_entry(const fileinfo &f);

@@ -16,8 +16,10 @@
  */
 
 #pragma once
+#include"zipdefs.h"
 #include<string>
 #include<vector>
+#include<cstdio>
 
 class ZipCreator final {
 
@@ -25,7 +27,7 @@ public:
 
     ZipCreator(const std::string fname);
 
-    void create(const std::vector<std::string> &files);
+    void create(const std::vector<fileinfo> &files);
 
 private:
 

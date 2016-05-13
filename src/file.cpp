@@ -20,7 +20,6 @@
 #include"mmapper.h"
 #include<endian.h>
 #include<sys/stat.h>
-#include<cassert>
 
 File::File(const std::string &fname, const char *mode) {
     f = fopen(fname.c_str(), mode);
@@ -34,11 +33,12 @@ File::File(const std::string &fname, const char *mode) {
 }
 
 File::File(FILE *opened) : f(opened) {
-    assert(f != nullptr);
 }
 
 File::~File() {
-    fclose(f);
+    if(f) {
+        fclose(f);
+    }
 }
 
 long File::tell() {

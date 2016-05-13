@@ -51,7 +51,9 @@ void write_file(const File &ifile, File &ofile, const localheader &lh) {
     ofile.write16le(lh.extra.size());
     ofile.write(lh.fname);
     ofile.write(lh.extra);
-    copy_contents(ifile, ofile);
+    if(ifile.get()) {
+        copy_contents(ifile, ofile);
+    }
 }
 
 
@@ -111,25 +113,6 @@ void write_z64_eod_locator(File &ofile, const zip64locator &l) {
     ofile.write32le(l.num_disks);
 }
 
-struct statdata {
-    unixextra ue;
-    uint16_t mode;
-};
-
-statdata get_unix_stats(const std::string &fname) {
-    struct stat buf;
-    statdata sd;
-    if(lstat(fname.c_str(), &buf) != 0) {
-        throw_system("Could not get entry stats: ");
-    }
-    sd.ue.uid = buf.st_uid;
-    sd.ue.gid = buf.st_gid;
-    sd.ue.atime = buf.st_atim.tv_sec;
-    sd.ue.mtime = buf.st_mtim.tv_sec;
-    sd.mode = buf.st_mode;
-    return sd;
-}
-
 template<typename C>
 void append_data(std::string &s, const C &c) {
     s.append(reinterpret_cast<const char*>(&c), sizeof(C));
@@ -168,19 +151,28 @@ ZipCreator::ZipCreator(const std::string fname) : fname(fname) {
 
 }
 
-void ZipCreator::create(const std::vector<std::string> &files) {
+void ZipCreator::create(const std::vector<fileinfo> &files) {
     File ofile(fname, "wb");
     endrecord ed;
     std::vector<centralheader> chs;
-    for(const auto &ifname : files) {
-        auto stats = get_unix_stats(ifname);
-        File ifile(ifname, "rb");
+    for(const auto &i : files) {
         localheader lh;
         centralheader ch;
-        auto compression_result = compress_entry(ifname);
+        auto compression_result = compress_entry(i);
         uint64_t local_header_offset = ofile.tell();
-        uint64_t uncompressed_size = ifile.size();
-        uint64_t compressed_size = compression_result.f.tell();
+        uint64_t uncompressed_size = i.fsize;
+        uint64_t compressed_size;
+        lh.fname = i.fname;
+        if(compression_result.entrytype == FILE_ENTRY) {
+            compressed_size = compression_result.f.tell();
+        } else if (compression_result.entrytype == DIRECTORY_ENTRY) {
+            compressed_size = 0;
+            if(lh.fname.back() != '/') {
+                lh.fname += '/';
+            }
+        } else {
+            throw std::runtime_error("UNIMPLEMENTED");
+        }
         lh.needed_version = NEEDED_VERSION;
         lh.gp_bitflag = 0x02; // LZMA EOS marker.
         lh.compression = ZIP_LZMA;
@@ -188,9 +180,8 @@ void ZipCreator::create(const std::vector<std::string> &files) {
         lh.last_mod_time = 0;
         lh.crc32 = compression_result.crc32;
         lh.compressed_size = lh.uncompressed_size = 0xFFFFFFFF;
-        lh.fname = ifname;
         lh.extra = pack_zip64(uncompressed_size, compressed_size, local_header_offset);
-        lh.extra += pack_unix_extra(stats.ue);
+        lh.extra += pack_unix_extra(i.ue);
         write_file(compression_result.f, ofile, lh);
 
         ch.version_made_by = MADE_BY_UNIX << 8 | NEEDED_VERSION;
@@ -202,10 +193,10 @@ void ZipCreator::create(const std::vector<std::string> &files) {
         ch.crc32 = lh.crc32;
         ch.compressed_size = lh.compressed_size;
         ch.uncompressed_size = lh.uncompressed_size;
-        ch.fname = ifname;
+        ch.fname = lh.fname;
         ch.disk_number_start = 0;
         ch.internal_file_attributes = 0;
-        ch.external_file_attributes = uint32_t(stats.mode) << 16;
+        ch.external_file_attributes = i.mode << 16;
         ch.local_header_rel_offset = local_header_offset;
         ch.extra_field = lh.extra;
         chs.push_back(ch);

@@ -37,6 +37,22 @@ class TestUnzip(ZipTestBase):
                 subprocess.check_call([zip_exe, zfile, datafile], cwd=packdir)
                 zf_abs = os.path.join(packdir, zfile)
                 z = ZipFile(zf_abs)
+                self.assertEqual(len(z.namelist()), 1)
+                z.extractall(unpackdir)
+                z.close()
+                os.unlink(zf_abs)
+                self.dirs_equal(packdir, unpackdir)
+
+    def test_dir(self):
+        zfile = 'zfile.zip'
+        dirname = 'a_subdir'
+        with tempfile.TemporaryDirectory() as packdir:
+            with tempfile.TemporaryDirectory() as unpackdir:
+                os.mkdir(os.path.join(packdir, dirname))
+                subprocess.check_call([zip_exe, zfile, dirname], cwd=packdir)
+                zf_abs = os.path.join(packdir, zfile)
+                z = ZipFile(zf_abs)
+                self.assertEqual(len(z.namelist()), 1)
                 z.extractall(unpackdir)
                 z.close()
                 os.unlink(zf_abs)
@@ -56,10 +72,31 @@ class TestUnzip(ZipTestBase):
                 subprocess.check_call([zip_exe, zfile, datafile], cwd=packdir)
                 zf_abs = os.path.join(packdir, zfile)
                 z = ZipFile(zf_abs)
+                self.assertEqual(len(z.namelist()), 1)
                 z.extractall(unpackdir)
                 z.close()
                 os.unlink(zf_abs)
                 self.dirs_equal(packdir, unpackdir)
+
+    def test_two(self):
+        zfile = 'zfile.zip'
+        datafile1 = 'inputdata.txt'
+        datafile2 = 'inputdata2.txt'
+        with tempfile.TemporaryDirectory() as packdir:
+            with tempfile.TemporaryDirectory() as unpackdir:
+                with open(os.path.join(packdir, datafile1), 'w') as dfile:
+                    dfile.write('This is first text for compression.\n' * 10)
+                with open(os.path.join(packdir, datafile2), 'w') as dfile:
+                    dfile.write('This is second text for compression.\n' * 10)
+                subprocess.check_call([zip_exe, zfile, datafile1, datafile2], cwd=packdir)
+                zf_abs = os.path.join(packdir, zfile)
+                z = ZipFile(zf_abs)
+                self.assertEqual(len(z.namelist()), 2)
+                z.extractall(unpackdir)
+                z.close()
+                os.unlink(zf_abs)
+                self.dirs_equal(packdir, unpackdir)
+
 
     def test_abs(self):
         self.assertNotEqual(subprocess.call([zip_exe, 'foobar.zip', __file__]), 0)

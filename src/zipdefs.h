@@ -52,6 +52,13 @@ struct unixextra {
     std::string data;
 };
 
+struct fileinfo {
+    std::string fname;
+    unixextra ue;
+    uint32_t mode;
+    uint64_t fsize;
+};
+
 struct localheader {
     uint16_t needed_version;
     uint16_t gp_bitflag;
