@@ -24,5 +24,8 @@ executable('jzip',
   dependencies : threaddep
 )
 
-test_exe = find_program('tester.py')
-test('unzip test', test_exe, args : [meson.source_root(), meson.current_build_dir()])
+utest_exe = find_program('unziptest.py')
+test('unzip test', utest_exe, args : [meson.source_root(), meson.current_build_dir()])
+
+ctest_exe = find_program('ziptest.py')
+test('zip test', ctest_exe, args : [meson.source_root(), meson.current_build_dir()])

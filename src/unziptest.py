@@ -22,18 +22,7 @@ from zipfile import ZipFile
 datadir = None
 unzip_exe = None
 
-class TestUnzip(unittest.TestCase):
-
-    def check_same(self, zipname):
-        zfile = os.path.join(datadir, zipname)
-        self.assertTrue(os.path.isfile(zfile))
-        with tempfile.TemporaryDirectory() as pdir:
-            with tempfile.TemporaryDirectory() as testdir:
-                with ZipFile(zfile) as zf:
-                    zf.extractall(path=pdir)
-                    subprocess.check_call([unzip_exe, zfile], cwd=testdir)
-                    self.is_dir_subset(pdir, testdir)
-                    self.is_dir_subset(testdir, pdir)
+class ZipTestBase(unittest.TestCase):
 
     def is_dir_subset(self, dir1, dir2):
         chop_ind = len(dir1)
@@ -67,6 +56,22 @@ class TestUnzip(unittest.TestCase):
         d2 = f2.read()
         f2.close()
         self.assertEqual(d1, d2)
+
+    def dirs_equal(self, dir1, dir2):
+        self.is_dir_subset(dir1, dir2)
+        self.is_dir_subset(dir2, dir1)
+
+class TestUnzip(ZipTestBase):
+
+    def check_same(self, zipname):
+        zfile = os.path.join(datadir, zipname)
+        self.assertTrue(os.path.isfile(zfile))
+        with tempfile.TemporaryDirectory() as pdir:
+            with tempfile.TemporaryDirectory() as testdir:
+                with ZipFile(zfile) as zf:
+                    zf.extractall(path=pdir)
+                    subprocess.check_call([unzip_exe, zfile], cwd=testdir)
+                    self.dirs_equal(pdir, testdir)
 
     def test_deflate(self):
         self.check_same('basic.zip')
