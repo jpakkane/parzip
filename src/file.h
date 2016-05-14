@@ -41,7 +41,7 @@ public:
     operator FILE*() { return f; }
 
     FILE* get() const { return f; }
-    long tell();
+    long tell() const;
     int seek(long offset, int whence=SEEK_SET);
     int fileno() const;
 

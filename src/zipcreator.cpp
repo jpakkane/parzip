@@ -25,6 +25,8 @@
 
 #include<sys/stat.h>
 
+#include<thread>
+#include<future>
 #include<cassert>
 #include<stdexcept>
 
@@ -145,63 +147,90 @@ std::string pack_unix_extra(unixextra ue) {
     return result;
 }
 
+centralheader write_entry(File &ofile, const compressresult &compression_result) {
+    localheader lh;
+    centralheader ch;
+    const fileinfo &i = compression_result.fi;
+    uint64_t local_header_offset = ofile.tell();
+    uint64_t uncompressed_size = i.fsize;
+    uint64_t compressed_size;
+    lh.fname = i.fname;
+    if(compression_result.entrytype == FILE_ENTRY) {
+        compressed_size = compression_result.f.tell();
+    } else if (compression_result.entrytype == DIRECTORY_ENTRY) {
+        compressed_size = 0;
+        if(lh.fname.back() != '/') {
+            lh.fname += '/';
+        }
+    } else {
+        throw std::runtime_error("UNIMPLEMENTED");
+    }
+    lh.needed_version = NEEDED_VERSION;
+    lh.gp_bitflag = 0x02; // LZMA EOS marker.
+    lh.compression = compression_result.cformat;
+    lh.last_mod_date = 0;
+    lh.last_mod_time = 0;
+    lh.crc32 = compression_result.crc32;
+    lh.compressed_size = lh.uncompressed_size = 0xFFFFFFFF;
+    lh.extra = pack_zip64(uncompressed_size, compressed_size, local_header_offset);
+    lh.extra += pack_unix_extra(i.ue);
+    write_file(compression_result.f, ofile, lh);
+
+    ch.version_made_by = MADE_BY_UNIX << 8 | NEEDED_VERSION;
+    ch.version_needed = lh.needed_version;
+    ch.bit_flag = lh.gp_bitflag;
+    ch.compression_method = lh.compression;
+    ch.last_mod_time = lh.last_mod_time;
+    ch.last_mod_date = lh.last_mod_date;
+    ch.crc32 = lh.crc32;
+    ch.compressed_size = lh.compressed_size;
+    ch.uncompressed_size = lh.uncompressed_size;
+    ch.fname = lh.fname;
+    ch.disk_number_start = 0;
+    ch.internal_file_attributes = 0;
+    ch.external_file_attributes = i.mode << 16;
+    ch.local_header_rel_offset = local_header_offset;
+    ch.extra_field = lh.extra;
+    return ch;
+}
+
+void pop_future(File &ofile, std::vector<std::future<compressresult>> &futures,
+        std::vector<centralheader> &chs) {
+    auto futu = std::move(futures[0]);
+    futures.erase(futures.begin());
+    try {
+        auto res = futu.get();
+        chs.push_back(write_entry(ofile, res));
+        printf("OK: %s\n", res. fi.fname.c_str());
+    } catch(const std::exception &e) {
+        printf("FAIL: %s\n", e.what());
+    } catch(...) {
+        printf("FAIL: unknown reason.");
+    }
+}
+
 }
 
 ZipCreator::ZipCreator(const std::string fname) : fname(fname) {
 
 }
 
-void ZipCreator::create(const std::vector<fileinfo> &files) {
+void ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
     File ofile(fname, "wb");
     endrecord ed;
     std::vector<centralheader> chs;
+    std::vector<std::future<compressresult>> futures;
+    futures.reserve(num_threads);
     for(const auto &i : files) {
-        localheader lh;
-        centralheader ch;
-        auto compression_result = compress_entry(i);
-        uint64_t local_header_offset = ofile.tell();
-        uint64_t uncompressed_size = i.fsize;
-        uint64_t compressed_size;
-        lh.fname = i.fname;
-        if(compression_result.entrytype == FILE_ENTRY) {
-            compressed_size = compression_result.f.tell();
-        } else if (compression_result.entrytype == DIRECTORY_ENTRY) {
-            compressed_size = 0;
-            if(lh.fname.back() != '/') {
-                lh.fname += '/';
-            }
-        } else {
-            throw std::runtime_error("UNIMPLEMENTED");
+        if(futures.size() >= (size_t)num_threads) {
+            pop_future(ofile, futures, chs);
         }
-        lh.needed_version = NEEDED_VERSION;
-        lh.gp_bitflag = 0x02; // LZMA EOS marker.
-        lh.compression = compression_result.cformat;
-        lh.last_mod_date = 0;
-        lh.last_mod_time = 0;
-        lh.crc32 = compression_result.crc32;
-        lh.compressed_size = lh.uncompressed_size = 0xFFFFFFFF;
-        lh.extra = pack_zip64(uncompressed_size, compressed_size, local_header_offset);
-        lh.extra += pack_unix_extra(i.ue);
-        write_file(compression_result.f, ofile, lh);
-
-        ch.version_made_by = MADE_BY_UNIX << 8 | NEEDED_VERSION;
-        ch.version_needed = lh.needed_version;
-        ch.bit_flag = lh.gp_bitflag;
-        ch.compression_method = lh.compression;
-        ch.last_mod_time = lh.last_mod_time;
-        ch.last_mod_date = lh.last_mod_date;
-        ch.crc32 = lh.crc32;
-        ch.compressed_size = lh.compressed_size;
-        ch.uncompressed_size = lh.uncompressed_size;
-        ch.fname = lh.fname;
-        ch.disk_number_start = 0;
-        ch.internal_file_attributes = 0;
-        ch.external_file_attributes = i.mode << 16;
-        ch.local_header_rel_offset = local_header_offset;
-        ch.extra_field = lh.extra;
-        chs.push_back(ch);
-        printf("OK: %s\n", i.fname.c_str());
+        futures.emplace_back(std::async(std::launch::async, [&i] { return compress_entry(i); }));
     }
+    while(!futures.empty()) {
+        pop_future(ofile, futures, chs);
+    }
+    futures.clear();
     uint64_t ch_offset = ofile.tell();
     for(const auto &ch : chs) {
         write_central_header(ofile, ch);

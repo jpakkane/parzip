@@ -32,9 +32,9 @@
 
 namespace {
 
-compressresult compress_lzma(const std::string &s) {
+compressresult compress_lzma(const fileinfo &fi) {
     const int CHUNK=1024*1024;
-    File infile(s, "rb");
+    File infile(fi.fname, "rb");
     MMapper buf = infile.mmap();
     FILE *f = tmpfile();
     std::unique_ptr<unsigned char[]> out(new unsigned char [CHUNK]);
@@ -42,7 +42,7 @@ compressresult compress_lzma(const std::string &s) {
     if(!f) {
         throw_system("Could not create temp file: ");
     }
-    compressresult result{File(f), FILE_ENTRY, CRC32(buf, buf.size()), ZIP_LZMA};
+    compressresult result{File(f), FILE_ENTRY, CRC32(buf, buf.size()), ZIP_LZMA, fi};
     lzma_options_lzma opt_lzma;
     lzma_stream strm = LZMA_STREAM_INIT;
     if(lzma_lzma_preset(&opt_lzma, LZMA_PRESET_DEFAULT)) {
@@ -104,30 +104,30 @@ compressresult compress_lzma(const std::string &s) {
     return result;
 }
 
-compressresult store_file(const std::string &fname) {
-    FILE *f = fopen(fname.c_str(), "r");
+compressresult store_file(const fileinfo &fi) {
+    FILE *f = fopen(fi.fname.c_str(), "r");
     if(!f) {
         throw_system("Could not open input file: ");
     }
 
-    compressresult result{File(f), FILE_ENTRY, (uint32_t)-1, ZIP_NO_COMPRESSION};
+    compressresult result{File(f), FILE_ENTRY, (uint32_t)-1, ZIP_NO_COMPRESSION, fi};
     auto mmap = result.f.mmap();
     result.crc32 = CRC32(mmap, mmap.size());
     return result;
 }
 
-compressresult create_dir(const std::string &f) {
-    compressresult r{nullptr, DIRECTORY_ENTRY, CRC32(reinterpret_cast<const unsigned char*>(&f), 0), ZIP_NO_COMPRESSION};
+compressresult create_dir(const fileinfo &fi) {
+    compressresult r{nullptr, DIRECTORY_ENTRY, CRC32(nullptr, 0), ZIP_NO_COMPRESSION, fi};
     return r;
 }
 
-compressresult create_symlink(const fileinfo &f) {
-    std::unique_ptr<unsigned char[]> buf(new unsigned char[f.fsize+1]);
-    auto r = readlink(f.fname.c_str(), (char*)buf.get(), f.fsize+1);
+compressresult create_symlink(const fileinfo &fi) {
+    std::unique_ptr<unsigned char[]> buf(new unsigned char[fi.fsize+1]);
+    auto r = readlink(fi.fname.c_str(), (char*)buf.get(), fi.fsize+1);
     if(r<0) {
         throw_system("Could not read symlink contents: ");
     }
-    if((uint64_t)r > f.fsize) {
+    if((uint64_t)r > fi.fsize) {
         throw std::runtime_error("Symlink size changed while packing.");
     }
 
@@ -135,7 +135,7 @@ compressresult create_symlink(const fileinfo &f) {
     if(!tf) {
         throw_system("Could not create temp file: ");
     }
-    compressresult result{File(tf), FILE_ENTRY, CRC32(buf.get(), r), ZIP_NO_COMPRESSION};
+    compressresult result{File(tf), FILE_ENTRY, CRC32(buf.get(), r), ZIP_NO_COMPRESSION, fi};
     result.f.write(buf.get(), r);
     result.f.flush();
     return result;
@@ -146,12 +146,12 @@ compressresult create_symlink(const fileinfo &f) {
 compressresult compress_entry(const fileinfo &f) {
     if(S_ISREG(f.mode)) {
         if(f.fsize > 0) {
-            return compress_lzma(f.fname);
+            return compress_lzma(f);
         }
-        return store_file(f.fname);
+        return store_file(f);
     }
     if(S_ISDIR(f.mode)) {
-        return create_dir(f.fname);
+        return create_dir(f);
     }
     if(S_ISLNK(f.mode)) {
         return create_symlink(f);

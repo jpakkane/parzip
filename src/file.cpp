@@ -41,7 +41,7 @@ File::~File() {
     }
 }
 
-long File::tell() {
+long File::tell() const {
     return ftell(f);
 }
 int File::seek(long offset, int whence) {

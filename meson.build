@@ -1,4 +1,4 @@
-project('jzip', 'cpp',
+project('parzip', 'cpp',
   default_options : ['cpp_std=c++14', 'warning_level=3'])
 
 zdep = dependency('zlib')

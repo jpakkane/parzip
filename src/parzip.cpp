@@ -19,12 +19,14 @@
 #include"zipcreator.h"
 #include"utils.h"
 
+#include<unistd.h>
+#include<thread>
 #include<cstdio>
 #include<vector>
 #include<string>
-#include<unistd.h>
 
 int main(int argc, char **argv) {
+    const int num_threads = std::max((int)std::thread::hardware_concurrency(), 1);
     if(argc < 3) {
         printf("%s <zip file> <files to archive>\n", argv[0]);
         return 1;
@@ -54,12 +56,12 @@ int main(int argc, char **argv) {
     try {
         files = expand_files(filenames);
     } catch(const std::exception &e) {
-        printf("Scanning for files to pack failed: %s\n", e.what());
+        printf("Scanning input files failed: %s\n", e.what());
         return 1;
     }
     ZipCreator zc(argv[1]);
     try {
-        zc.create(files);
+        zc.create(files, num_threads);
     } catch(std::exception &e) {
         unlink(argv[1]);
         printf("Zip creation failed: %s\n", e.what());

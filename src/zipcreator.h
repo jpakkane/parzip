@@ -27,7 +27,7 @@ public:
 
     ZipCreator(const std::string fname);
 
-    void create(const std::vector<fileinfo> &files);
+    void create(const std::vector<fileinfo> &files, int num_threads);
 
 private:
 
