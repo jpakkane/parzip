@@ -160,8 +160,8 @@ class TestUnzip(ZipTestBase):
 
 if __name__ == '__main__':
     datadir = os.path.join(sys.argv[1], 'testdata')
-    unzip_exe = os.path.join(sys.argv[2], 'junzip')
-    zip_exe = os.path.join(sys.argv[2], 'jzip')
+    unzip_exe = os.path.join(sys.argv[2], 'parunzip')
+    zip_exe = os.path.join(sys.argv[2], 'parzip')
     if not os.path.isabs(datadir):
         datadir = os.path.join(os.getcwd(), datadir)
     if not os.path.isabs(unzip_exe):

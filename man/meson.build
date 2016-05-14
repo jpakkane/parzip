@@ -1,1 +1,1 @@
-install_man('junzip.1')
+install_man('parzip.1', 'parunzip.1')

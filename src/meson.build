@@ -1,4 +1,4 @@
-zl = static_library('jzcore',
+zl = static_library('parzcore',
   'zipfile.cpp',
   'compress.cpp',
   'decompress.cpp',
@@ -10,15 +10,15 @@ zl = static_library('jzcore',
   dependencies : [zdep, lzmadep, threaddep]
 )
 
-executable('junzip',
-  'junzip.cpp',
+executable('parunzip',
+  'parunzip.cpp',
   link_with : zl,
   install : true,
   dependencies : threaddep,
 )
 
-executable('jzip',
-  'jzip.cpp',
+executable('parzip',
+  'parzip.cpp',
   link_with : zl,
   install : true,
   dependencies : threaddep
