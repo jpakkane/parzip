@@ -22,9 +22,13 @@
 #include"utils.h"
 
 MMapper::MMapper(int fd, uint64_t size) : map_size(size) {
-    addr = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if(addr == MAP_FAILED) {
-        throw_system("Could not mmap file:");
+    if(size == 0) {
+        addr = nullptr;
+    } else {
+        addr = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
+        if(addr == MAP_FAILED) {
+            throw_system("Could not mmap file:");
+        }
     }
 }
 
@@ -47,5 +51,7 @@ MMapper& MMapper::operator=(MMapper &&other) {
 }
 
 MMapper::~MMapper() {
-    munmap(addr, map_size);
+    if(addr) {
+        munmap(addr, map_size);
+    }
 }

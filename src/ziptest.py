@@ -43,6 +43,22 @@ class TestUnzip(ZipTestBase):
                 os.unlink(zf_abs)
                 self.dirs_equal(packdir, unpackdir)
 
+    def test_empty(self):
+        zfile = 'zfile.zip'
+        datafile = 'inputdata.txt'
+        with tempfile.TemporaryDirectory() as packdir:
+            with tempfile.TemporaryDirectory() as unpackdir:
+                with open(os.path.join(packdir, datafile), 'w') as dfile:
+                    pass
+                subprocess.check_call([zip_exe, zfile, datafile], cwd=packdir)
+                zf_abs = os.path.join(packdir, zfile)
+                z = ZipFile(zf_abs)
+                self.assertEqual(len(z.namelist()), 1)
+                z.extractall(unpackdir)
+                z.close()
+                os.unlink(zf_abs)
+                self.dirs_equal(packdir, unpackdir)
+
     def test_dir(self):
         zfile = 'zfile.zip'
         dirname = 'a_subdir'

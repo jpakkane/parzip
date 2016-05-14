@@ -104,6 +104,18 @@ compressresult compress_lzma(const std::string &s) {
     return result;
 }
 
+compressresult store_file(const std::string &fname) {
+    FILE *f = fopen(fname.c_str(), "r");
+    if(!f) {
+        throw_system("Could not open input file: ");
+    }
+
+    compressresult result{File(f), FILE_ENTRY, (uint32_t)-1, ZIP_NO_COMPRESSION};
+    auto mmap = result.f.mmap();
+    result.crc32 = CRC32(mmap, mmap.size());
+    return result;
+}
+
 compressresult create_dir(const std::string &f) {
     compressresult r{nullptr, DIRECTORY_ENTRY, CRC32(reinterpret_cast<const unsigned char*>(&f), 0), ZIP_NO_COMPRESSION};
     return r;
@@ -133,7 +145,10 @@ compressresult create_symlink(const fileinfo &f) {
 
 compressresult compress_entry(const fileinfo &f) {
     if(S_ISREG(f.mode)) {
-        return compress_lzma(f.fname);
+        if(f.fsize > 0) {
+            return compress_lzma(f.fname);
+        }
+        return store_file(f.fname);
     }
     if(S_ISDIR(f.mode)) {
         return create_dir(f.fname);
