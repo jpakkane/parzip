@@ -29,7 +29,7 @@ public:
 
     size_t size() const { return entries.size(); }
 
-    void unzip() const;
+    void unzip(int num_threads) const;
 
 private:
 

@@ -256,8 +256,7 @@ void ZipFile::readCentralDirectory() {
     }
 }
 
-void ZipFile::unzip() const {
-    const int num_threads = std::max((int)std::thread::hardware_concurrency(), 1);
+void ZipFile::unzip(int num_threads) const {
     int fd = zipfile.fileno();
     if(fd < 0) {
         throw_system("Could not open zip file:");

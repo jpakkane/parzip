@@ -16,17 +16,19 @@
  */
 
 #include<cstdio>
+#include<thread>
 
 #include"zipfile.h"
 
 int main(int argc, char **argv) {
+    const int num_threads = std::max((int)std::thread::hardware_concurrency(), 1);
     if(argc != 2 ) {
         printf("%s <zip file>\n", argv[0]);
         return 1;
     }
     try {
         ZipFile f(argv[1]);
-        f.unzip();
+        f.unzip(num_threads);
     } catch(std::exception &e) {
         printf("Unpacking failed: %s\n", e.what());
         return 1;

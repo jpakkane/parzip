@@ -54,13 +54,20 @@ std::vector<fileinfo> expand_dir(const std::string &dirname) {
     struct dirent *cur = reinterpret_cast<struct dirent*>(buf.data());
     struct dirent *de;
     std::vector<fileinfo> result;
-
+    std::vector<std::string> entries;
+    std::string basename;
     while(readdir_r(dir, cur, &de) == 0 && de) {
-        std::string basename(cur->d_name);
+        basename = cur->d_name;
         if(basename == "." || basename == "..") {
             continue;
         }
-        std::string fullpath = dirname + '/' + basename;
+        entries.push_back(basename);
+    }
+    // Always set order to create reproducible zip files.
+    std::sort(entries.begin(), entries.end());
+    std::string fullpath;
+    for(const auto &base : entries) {
+        fullpath = dirname + '/' + base;
         auto new_ones = expand_entry(fullpath);
         std::move(new_ones.begin(), new_ones.end(), std::back_inserter(result));
     }

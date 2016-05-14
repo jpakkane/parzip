@@ -29,15 +29,15 @@
 #include<lzma.h>
 #include<cstdio>
 
-#define CHUNK 16384
 
 namespace {
 
 compressresult compress_lzma(const std::string &s) {
+    const int CHUNK=1024*1024;
     File infile(s, "rb");
     MMapper buf = infile.mmap();
     FILE *f = tmpfile();
-    unsigned char out[CHUNK];
+    std::unique_ptr<unsigned char[]> out(new unsigned char [CHUNK]);
     uint32_t filter_size;
     if(!f) {
         throw_system("Could not create temp file: ");
@@ -80,15 +80,15 @@ compressresult compress_lzma(const std::string &s) {
             action = LZMA_FINISH;
         } else {
             strm.avail_out = CHUNK;
-            strm.next_out = out;
+            strm.next_out = out.get();
         }
         ret = lzma_code(&strm, action);
         if(strm.avail_out == 0 || ret == LZMA_STREAM_END) {
             size_t write_size = CHUNK - strm.avail_out;
-            if (fwrite(out, 1, write_size, result.f) != write_size || ferror(result.f)) {
+            if (fwrite(out.get(), 1, write_size, result.f) != write_size || ferror(result.f)) {
                 throw_system("Could not write to file:");
             }
-            strm.next_out = out;
+            strm.next_out = out.get();
             strm.avail_out = CHUNK;
         }
 

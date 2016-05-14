@@ -37,6 +37,10 @@ int main(int argc, char **argv) {
     std::vector<std::string> filenames;
     for(int i=2; i<argc; i++) {
         filenames.push_back(argv[i]);
+        if(filenames.back().empty()) {
+            printf("Empty file name not permitted.");
+            return 1;
+        }
         if(is_absolute_path(filenames.back())) {
             printf("Absolute file names are forbidden in ZIP files.\n");
             return 1;
