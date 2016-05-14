@@ -23,6 +23,7 @@
 
 bool is_dir(const std::string &s);
 bool is_dir(const fileinfo &f);
+bool is_symlink(const fileinfo &f);
 bool is_file(const std::string &s);
 bool is_file(const fileinfo &f);
 bool exists_on_fs(const std::string &s);

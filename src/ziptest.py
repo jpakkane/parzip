@@ -97,6 +97,29 @@ class TestUnzip(ZipTestBase):
                 os.unlink(zf_abs)
                 self.dirs_equal(packdir, unpackdir)
 
+    def test_symlink(self):
+        zfile = 'zfile.zip'
+        datafile1 = 'inputdata.txt'
+        datafile2 = 'symlink'
+        with tempfile.TemporaryDirectory() as packdir:
+            with tempfile.TemporaryDirectory() as unpackdir:
+                with open(os.path.join(packdir, datafile1), 'w') as dfile:
+                    dfile.write('This is a file.\n')
+                os.symlink(datafile1, os.path.join(packdir, datafile2))
+                subprocess.check_call([zip_exe, zfile, datafile1, datafile2], cwd=packdir)
+                zf_abs = os.path.join(packdir, zfile)
+                z = ZipFile(zf_abs)
+                self.assertEqual(len(z.namelist()), 2)
+                z.close()
+                # Python does not preserve symlinks so check manually.
+                subprocess.check_call([unzip_exe, os.path.join(packdir, zfile)], cwd=unpackdir)
+                fstats = os.lstat(os.path.join(unpackdir, datafile1))
+                lstats = os.lstat(os.path.join(unpackdir, datafile2))
+                self.assertTrue(stat.S_ISREG(fstats.st_mode))
+                self.assertTrue(stat.S_ISLNK(lstats.st_mode))
+                self.assertEqual(os.readlink(os.path.join(unpackdir, datafile2)), datafile1)
+
+
     def test_subdir(self):
         zfile = 'zfile.zip'
         datadir = 'subdir'

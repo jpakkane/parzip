@@ -175,7 +175,7 @@ void ZipCreator::create(const std::vector<fileinfo> &files) {
         }
         lh.needed_version = NEEDED_VERSION;
         lh.gp_bitflag = 0x02; // LZMA EOS marker.
-        lh.compression = ZIP_LZMA;
+        lh.compression = compression_result.cformat;
         lh.last_mod_date = 0;
         lh.last_mod_time = 0;
         lh.crc32 = compression_result.crc32;

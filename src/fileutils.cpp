@@ -74,7 +74,7 @@ std::vector<fileinfo> expand_entry(const std::string &fname) {
         auto new_ones = expand_dir(fname);
         std::move(new_ones.begin(), new_ones.end(), std::back_inserter(result));
         return result;
-    } else if(is_file(fi)) {
+    } else if(is_file(fi) || is_symlink(fi)) {
         return result;
     } else {
         throw std::runtime_error("Unimplemented.");
@@ -105,6 +105,10 @@ bool is_file(const std::string &s) {
 
 bool is_file(const fileinfo &f) {
     return S_ISREG(f.mode);
+}
+
+bool is_symlink(const fileinfo &f) {
+    return S_ISLNK(f.mode);
 }
 
 bool exists_on_fs(const std::string &s) {

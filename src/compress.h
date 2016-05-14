@@ -26,6 +26,7 @@ struct compressresult {
     File f;
     filetype entrytype;
     uint32_t crc32;
+    uint16_t cformat;
 };
 
 compressresult compress_entry(const fileinfo &f);

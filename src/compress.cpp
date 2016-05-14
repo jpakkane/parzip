@@ -20,12 +20,14 @@
 #include"utils.h"
 #include"mmapper.h"
 
+#include<sys/stat.h>
+#include<unistd.h>
+
 #include<memory>
 #include<stdexcept>
 
 #include<lzma.h>
 #include<cstdio>
-#include<sys/stat.h>
 
 #define CHUNK 16384
 
@@ -40,7 +42,7 @@ compressresult compress_lzma(const std::string &s) {
     if(!f) {
         throw_system("Could not create temp file: ");
     }
-    compressresult result{File(f), FILE_ENTRY, CRC32(buf, buf.size())};
+    compressresult result{File(f), FILE_ENTRY, CRC32(buf, buf.size()), ZIP_LZMA};
     lzma_options_lzma opt_lzma;
     lzma_stream strm = LZMA_STREAM_INIT;
     if(lzma_lzma_preset(&opt_lzma, LZMA_PRESET_DEFAULT)) {
@@ -103,8 +105,28 @@ compressresult compress_lzma(const std::string &s) {
 }
 
 compressresult create_dir(const std::string &f) {
-    compressresult r{nullptr, DIRECTORY_ENTRY, CRC32(reinterpret_cast<const unsigned char*>(&f), 0)};
+    compressresult r{nullptr, DIRECTORY_ENTRY, CRC32(reinterpret_cast<const unsigned char*>(&f), 0), ZIP_NO_COMPRESSION};
     return r;
+}
+
+compressresult create_symlink(const fileinfo &f) {
+    std::unique_ptr<unsigned char[]> buf(new unsigned char[f.fsize+1]);
+    auto r = readlink(f.fname.c_str(), (char*)buf.get(), f.fsize+1);
+    if(r<0) {
+        throw_system("Could not read symlink contents: ");
+    }
+    if((uint64_t)r > f.fsize) {
+        throw std::runtime_error("Symlink size changed while packing.");
+    }
+
+    FILE *tf = tmpfile();
+    if(!tf) {
+        throw_system("Could not create temp file: ");
+    }
+    compressresult result{File(tf), FILE_ENTRY, CRC32(buf.get(), r), ZIP_NO_COMPRESSION};
+    result.f.write(buf.get(), r);
+    result.f.flush();
+    return result;
 }
 
 }
@@ -115,6 +137,9 @@ compressresult compress_entry(const fileinfo &f) {
     }
     if(S_ISDIR(f.mode)) {
         return create_dir(f.fname);
+    }
+    if(S_ISLNK(f.mode)) {
+        return create_symlink(f);
     }
     throw std::runtime_error("Unknown file type.");
 }
