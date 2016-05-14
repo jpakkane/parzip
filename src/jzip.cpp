@@ -23,26 +23,6 @@
 #include<vector>
 #include<string>
 #include<unistd.h>
-#include<algorithm>
-
-#include<sys/stat.h>
-
-
-fileinfo get_unix_stats(const std::string &fname) {
-    struct stat buf;
-    fileinfo sd;
-    if(lstat(fname.c_str(), &buf) != 0) {
-        throw_system("Could not get entry stats: ");
-    }
-    sd.fname = fname;
-    sd.ue.uid = buf.st_uid;
-    sd.ue.gid = buf.st_gid;
-    sd.ue.atime = buf.st_atim.tv_sec;
-    sd.ue.mtime = buf.st_mtim.tv_sec;
-    sd.mode = buf.st_mode;
-    sd.fsize = buf.st_size;
-    return sd;
-}
 
 int main(int argc, char **argv) {
     if(argc < 3) {
@@ -67,7 +47,12 @@ int main(int argc, char **argv) {
         return 1;
     }
     std::vector<fileinfo> files;
-    std::transform(filenames.begin(), filenames.end(), std::back_inserter(files), get_unix_stats);
+    try {
+        files = expand_files(filenames);
+    } catch(const std::exception &e) {
+        printf("Scanning for files to pack failed: %s\n", e.what());
+        return 1;
+    }
     ZipCreator zc(argv[1]);
     try {
         zc.create(files);

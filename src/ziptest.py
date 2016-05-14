@@ -97,6 +97,24 @@ class TestUnzip(ZipTestBase):
                 os.unlink(zf_abs)
                 self.dirs_equal(packdir, unpackdir)
 
+    def test_subdir(self):
+        zfile = 'zfile.zip'
+        datadir = 'subdir'
+        with tempfile.TemporaryDirectory() as packdir:
+            with tempfile.TemporaryDirectory() as unpackdir:
+                os.makedirs(os.path.join(packdir, 'subdir/subsubdir'))
+                with open(os.path.join(packdir, 'subdir/subfile.txt'), 'w') as dfile:
+                    dfile.write('This is a file in the subdirectory.\n')
+                with open(os.path.join(packdir, 'subdir/subsubdir/subsubfile.txt'), 'w') as dfile:
+                    dfile.write('This is a file in the subsubdir.\n')
+                subprocess.check_call([zip_exe, zfile, datadir], cwd=packdir)
+                zf_abs = os.path.join(packdir, zfile)
+                z = ZipFile(zf_abs)
+                self.assertEqual(len(z.namelist()), 4)
+                z.extractall(unpackdir)
+                z.close()
+                os.unlink(zf_abs)
+                self.dirs_equal(packdir, unpackdir)
 
     def test_abs(self):
         self.assertNotEqual(subprocess.call([zip_exe, 'foobar.zip', __file__]), 0)

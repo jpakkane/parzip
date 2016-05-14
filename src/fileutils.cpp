@@ -18,10 +18,70 @@
 #include"fileutils.h"
 #include"utils.h"
 
+#include<dirent.h>
+#include<sys/stat.h>
+#include<sys/types.h>
+#include<memory>
+#include<array>
 #include<cassert>
 #include<stdexcept>
-#include<sys/stat.h>
+#include<algorithm>
 
+namespace {
+
+std::vector<fileinfo> expand_entry(const std::string &fname);
+
+fileinfo get_unix_stats(const std::string &fname) {
+    struct stat buf;
+    fileinfo sd;
+    if(lstat(fname.c_str(), &buf) != 0) {
+        throw_system("Could not get entry stats: ");
+    }
+    sd.fname = fname;
+    sd.ue.uid = buf.st_uid;
+    sd.ue.gid = buf.st_gid;
+    sd.ue.atime = buf.st_atim.tv_sec;
+    sd.ue.mtime = buf.st_mtim.tv_sec;
+    sd.mode = buf.st_mode;
+    sd.fsize = buf.st_size;
+    return sd;
+}
+
+std::vector<fileinfo> expand_dir(const std::string &dirname) {
+    std::unique_ptr<DIR, int(*)(DIR*)> dirholder(opendir(dirname.c_str()), closedir);
+    auto dir = dirholder.get();
+    std::array<char, sizeof(dirent) + NAME_MAX + 1> buf;
+    struct dirent *cur = reinterpret_cast<struct dirent*>(buf.data());
+    struct dirent *de;
+    std::vector<fileinfo> result;
+
+    while(readdir_r(dir, cur, &de) == 0 && de) {
+        std::string basename(cur->d_name);
+        if(basename == "." || basename == "..") {
+            continue;
+        }
+        std::string fullpath = dirname + '/' + basename;
+        auto new_ones = expand_entry(fullpath);
+        std::move(new_ones.begin(), new_ones.end(), std::back_inserter(result));
+    }
+    return result;
+}
+
+std::vector<fileinfo> expand_entry(const std::string &fname) {
+    auto fi = get_unix_stats(fname);
+    std::vector<fileinfo> result{fi};
+    if(is_dir(fi)) {
+        auto new_ones = expand_dir(fname);
+        std::move(new_ones.begin(), new_ones.end(), std::back_inserter(result));
+        return result;
+    } else if(is_file(fi)) {
+        return result;
+    } else {
+        throw std::runtime_error("Unimplemented.");
+    }
+}
+
+}
 
 bool is_dir(const std::string &s) {
     struct stat sbuf;
@@ -31,12 +91,20 @@ bool is_dir(const std::string &s) {
     return (sbuf.st_mode & S_IFMT) == S_IFDIR;
 }
 
+bool is_dir(const fileinfo &f) {
+    return S_ISDIR(f.mode);
+}
+
 bool is_file(const std::string &s) {
     struct stat sbuf;
     if(stat(s.c_str(), &sbuf) < 0) {
         return false;
     }
     return (sbuf.st_mode & S_IFMT) == S_IFREG;
+}
+
+bool is_file(const fileinfo &f) {
+    return S_ISREG(f.mode);
 }
 
 bool exists_on_fs(const std::string &s) {
@@ -88,3 +156,12 @@ bool is_absolute_path(const std::string &fname) {
     return false;
 
 }
+
+std::vector<fileinfo> expand_files(const std::vector<std::string> &originals) {
+    return std::accumulate(originals.begin(), originals.end(), std::vector<fileinfo>{}, [](std::vector<fileinfo> res, const std::string &s) {
+        auto n = expand_entry(s);
+        std::move(n.begin(), n.end(), std::back_inserter(res));
+        return res;
+    });
+}
+

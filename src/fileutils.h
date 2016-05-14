@@ -17,10 +17,14 @@
 
 #pragma once
 
+#include"zipdefs.h"
 #include<string>
+#include<vector>
 
 bool is_dir(const std::string &s);
+bool is_dir(const fileinfo &f);
 bool is_file(const std::string &s);
+bool is_file(const fileinfo &f);
 bool exists_on_fs(const std::string &s);
 
 bool is_absolute_path(const std::string &fname);
@@ -28,3 +32,4 @@ bool is_absolute_path(const std::string &fname);
 void mkdirp(const std::string &s);
 void create_dirs_for_file(const std::string &s);
 
+std::vector<fileinfo> expand_files(const std::vector<std::string> &originals);
