@@ -43,7 +43,7 @@
 
 #include<memory>
 
-#define CHUNK 16384
+#define CHUNK 1024*1024
 
 namespace {
 
@@ -63,7 +63,7 @@ uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FI
     unsigned have;
     z_stream strm;
     const unsigned char *current = data_start;
-    unsigned char out[CHUNK];
+    std::unique_ptr<unsigned char[]> out(new unsigned char [CHUNK]);
 
     /* allocate inflate state */
     strm.zalloc = Z_NULL;
@@ -87,7 +87,7 @@ uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FI
         /* run inflate() on input until output buffer not full */
         do {
             strm.avail_out = CHUNK;
-            strm.next_out = out;
+            strm.next_out = out.get();
             ret = inflate(&strm, Z_NO_FLUSH);
             assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
             switch (ret) {
@@ -97,8 +97,8 @@ uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FI
                 throw std::runtime_error(strm.msg);
             }
             have = CHUNK - strm.avail_out;
-            crcvalue = crc32(crcvalue, out, have);
-            if (fwrite(out, 1, have, ofile) != have || ferror(ofile)) {
+            crcvalue = crc32(crcvalue, out.get(), have);
+            if (fwrite(out.get(), 1, have, ofile) != have || ferror(ofile)) {
                 throw_system("Could not write to file:");
             }
         } while (strm.avail_out == 0);
@@ -115,7 +115,7 @@ uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FI
 
 uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile) {
     uint32_t crcvalue = crc32(0, Z_NULL, 0);
-    unsigned char out[CHUNK];
+    std::unique_ptr<unsigned char[]> out(new unsigned char [CHUNK]);
     lzma_stream strm = LZMA_STREAM_INIT;
     lzma_filter filter[2];
     unsigned int have;
@@ -147,14 +147,14 @@ uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE 
 
         do {
             strm.avail_out = CHUNK;
-            strm.next_out = out;
+            strm.next_out = out.get();
             ret = lzma_code(&strm, LZMA_RUN);
             if(ret != LZMA_OK && ret != LZMA_STREAM_END) {
                 throw std::runtime_error("Decompression failed.");
             }
             have = CHUNK - strm.avail_out;
-            crcvalue = crc32(crcvalue, out, have);
-            if (fwrite(out, 1, have, ofile) != have || ferror(ofile)) {
+            crcvalue = crc32(crcvalue, out.get(), have);
+            if (fwrite(out.get(), 1, have, ofile) != have || ferror(ofile)) {
                 throw_system("Could not write to file:");
             }
         } while (strm.avail_out == 0);
