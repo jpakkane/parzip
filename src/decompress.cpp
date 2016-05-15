@@ -77,14 +77,12 @@ uint32_t inflate_to_file(const unsigned char *data_start, uint32_t data_size, FI
     std::unique_ptr<z_stream, int (*)(z_stream_s*)> zcloser(&strm, inflateEnd);
 
     /* decompress until deflate stream ends or end of file */
+    strm.avail_in = data_size;
+    strm.next_in = const_cast<unsigned char*>(current); // zlib header is const-broken
     do {
-        if(current >= data_start + data_size) {
+        if(strm.total_in >= data_size) {
             break;
         }
-        strm.avail_in = std::min((size_t)CHUNK, (size_t)(data_size - (current-data_start)));
-        if (strm.avail_in == 0)
-            break;
-        strm.next_in = const_cast<unsigned char*>(current); // zlib header is const-broken
 
         /* run inflate() on input until output buffer not full */
         do {
@@ -140,16 +138,12 @@ uint32_t lzma_to_file(const unsigned char *data_start, uint32_t data_size, FILE 
     std::unique_ptr<lzma_stream, void(*)(lzma_stream*)> lcloser(&strm, lzma_end);
 
     const unsigned char *current = data_start + offset;
+    strm.avail_in = (size_t)(data_size - offset);
+    strm.next_in = current;
     /* decompress until data ends */
     do {
-        if(current >= data_start + data_size) {
+        if (strm.total_in == data_size - offset)
             break;
-        }
-        strm.avail_in = std::min((size_t)CHUNK, (size_t)(data_size - (current-data_start)));
-        if (strm.avail_in == 0)
-            break;
-        strm.next_in = current;
-        strm.next_out = out;
 
         do {
             strm.avail_out = CHUNK;
@@ -164,7 +158,6 @@ uint32_t lzma_to_file(const unsigned char *data_start, uint32_t data_size, FILE 
                 throw_system("Could not write to file:");
             }
         } while (strm.avail_out == 0);
-        current += CHUNK;
     } while (true);
     return crcvalue;
 }
