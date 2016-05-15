@@ -24,6 +24,7 @@
 #include"mmapper.h"
 
 #include<sys/stat.h>
+#include<pthread.h>
 
 #include<thread>
 #include<future>
@@ -232,12 +233,22 @@ ZipCreator::ZipCreator(const std::string fname) : fname(fname) {
 }
 
 void ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
+    const int max_waiting_threads = 100;
     File ofile(fname, "wb");
     endrecord ed;
     std::vector<centralheader> chs;
     std::vector<std::future<compressresult>> futures;
     futures.reserve(files.size());
     size_t i=0;
+    /*
+     * Keeping all CPU cores pegged seems like a simple thing but has a few kinks:
+     *
+     * - results need to be written in the final zip file in the same order as input files
+     * - starting num_of_cpus threads and waiting in the correct order blocks if there is
+     *   one huge file followed by a ton of smaller ones
+     * - having too many threads running or finished but not written to the final file
+     *   causes resource exhaustion (file descriptors, temp dir disk space etc)
+     */
     for(const auto &f : files) {
         int running, finished;
         while(!futures.empty() && i<futures.size() && ready(futures, i)) {
@@ -247,7 +258,24 @@ void ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
             std::this_thread::yield();
             count_states(futures, i, running, finished);
         } while(running >= num_threads);
-        futures.emplace_back(std::async(std::launch::async, [&f] { return compress_entry(f); }));
+        // If we exhaust the maximum number of threads waiting to be written we must wait
+        // until resources become available. This means not pegging the cpus to the max
+        // but there does not seem to be a way to easily work around this.
+        while(!futures.empty() && i<futures.size() && running + finished >= max_waiting_threads) {
+            pop_future(ofile, futures, i++, chs);
+            count_states(futures, i, running, finished);
+        }
+        futures.emplace_back(std::async(std::launch::async, [&f] { const int max_name_size = 15; // 16 with \0
+            std::string thrname;
+            thrname.reserve(max_name_size);
+            if(f.fname.length() < max_name_size-2) {
+                thrname = "c " + f.fname;
+            } else {
+                thrname = "c ..." + f.fname.substr(f.fname.length()-(max_name_size-5));
+            }
+            pthread_setname_np(pthread_self(), thrname.c_str());
+            return compress_entry(f);
+        }));
     }
     while(i<futures.size()) {
         pop_future(ofile, futures, i++, chs);
@@ -280,8 +308,8 @@ void ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
 
     ed.disk_number = 0;
     ed.central_dir_disk_number = 0;
-    ed.this_disk_num_entries = chs.size();
-    ed.total_entries = chs.size();
+    ed.this_disk_num_entries = 0xFFFF;
+    ed.total_entries = 0XFFFF;
     ed.dir_size = 0xFFFFFFFF;
     ed.dir_offset_start_disk = 0xFFFFFFFF;
     write_end_record(ofile, ed);
