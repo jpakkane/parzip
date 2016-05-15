@@ -47,9 +47,9 @@
 
 namespace {
 
-uint32_t inflate_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
-uint32_t lzma_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
-uint32_t unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile);
+uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile);
+uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile);
+uint32_t unstore_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile);
 
 /* Decompress from file source to file dest until stream ends or EOF.
    inf() returns Z_OK on success, Z_MEM_ERROR if memory could not be
@@ -57,7 +57,7 @@ uint32_t unstore_to_file(const unsigned char *data_start, uint32_t data_size, FI
    invalid or incomplete, Z_VERSION_ERROR if the version of zlib.h and
    the version of the library linked do not match, or Z_ERRNO if there
    is an error reading or writing the files. */
-uint32_t inflate_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile) {
+uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile) {
     uint32_t crcvalue = crc32(0, Z_NULL, 0);
     int ret;
     unsigned have;
@@ -113,7 +113,7 @@ uint32_t inflate_to_file(const unsigned char *data_start, uint32_t data_size, FI
     return crcvalue;
 }
 
-uint32_t lzma_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile) {
+uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile) {
     uint32_t crcvalue = crc32(0, Z_NULL, 0);
     unsigned char out[CHUNK];
     lzma_stream strm = LZMA_STREAM_INIT;
@@ -163,7 +163,7 @@ uint32_t lzma_to_file(const unsigned char *data_start, uint32_t data_size, FILE 
 }
 
 
-uint32_t unstore_to_file(const unsigned char *data_start, uint32_t data_size, FILE *ofile) {
+uint32_t unstore_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile) {
     auto bytes_written = fwrite(data_start, 1, data_size, ofile);
     if(bytes_written != data_size) {
         throw_system("Could not write file fully:");
@@ -171,14 +171,14 @@ uint32_t unstore_to_file(const unsigned char *data_start, uint32_t data_size, FI
     return CRC32(data_start, data_size);
 }
 
-void create_symlink(const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+void create_symlink(const unsigned char *data_start, uint64_t data_size, const std::string &outname) {
     std::string symlink_target(data_start, data_start + data_size);
     if(symlink(symlink_target.c_str(), outname.c_str()) != 0) {
         throw_system("Symlink creation failed:");
     }
 }
 
-void create_file(const localheader &lh, const centralheader &ch, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+void create_file(const localheader &lh, const centralheader &ch, const unsigned char *data_start, uint64_t data_size, const std::string &outname) {
     decltype(unstore_to_file) *f;
     if(ch.compression_method == ZIP_NO_COMPRESSION) {
         f = unstore_to_file;
@@ -251,7 +251,7 @@ filetype detect_filetype(const localheader &lh, const centralheader &ch) {
     return FILE_ENTRY;
 }
 
-void do_unpack(const localheader &lh, const centralheader &ch, const unsigned char *data_start, uint32_t data_size, const std::string &outname) {
+void do_unpack(const localheader &lh, const centralheader &ch, const unsigned char *data_start, uint64_t data_size, const std::string &outname) {
     switch(detect_filetype(lh, ch)) {
     case DIRECTORY_ENTRY : mkdirp(outname); break;
     case SYMLINK_ENTRY : create_symlink(data_start, data_size, outname); break;
@@ -282,7 +282,7 @@ void set_unix_permissions(const localheader &lh, const centralheader &ch, const 
 
 void unpack_entry(const localheader &lh,
         const centralheader &ch,
-        const unsigned char *data_start, uint32_t data_size) {
+        const unsigned char *data_start, uint64_t data_size) {
     try {
         do_unpack(lh, ch, data_start, data_size, lh.fname);
         if(ch.version_made_by>>8 == MADE_BY_UNIX) {
