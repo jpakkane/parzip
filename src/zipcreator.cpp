@@ -194,18 +194,34 @@ centralheader write_entry(File &ofile, const compressresult &compression_result)
     return ch;
 }
 
-void pop_future(File &ofile, std::vector<std::future<compressresult>> &futures,
+void pop_future(File &ofile,
+        std::vector<std::future<compressresult>> &futures,
+        int i,
         std::vector<centralheader> &chs) {
-    auto futu = std::move(futures[0]);
-    futures.erase(futures.begin());
     try {
-        auto res = futu.get();
+        auto res = futures[i].get();
         chs.push_back(write_entry(ofile, res));
         printf("OK: %s\n", res. fi.fname.c_str());
     } catch(const std::exception &e) {
         printf("FAIL: %s\n", e.what());
     } catch(...) {
         printf("FAIL: unknown reason.");
+    }
+}
+
+bool ready(const std::vector<std::future<compressresult>> &futures, size_t i) {
+    return futures[i].wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
+}
+
+void count_states(const std::vector<std::future<compressresult>> &futures, size_t i, int &running, int &finished) {
+    running = 0;
+    finished = 0;
+    for(size_t j=i; j<futures.size(); j++) {
+        if(ready(futures, j)) {
+            finished++;
+        } else {
+            running++;
+        }
     }
 }
 
@@ -220,17 +236,22 @@ void ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
     endrecord ed;
     std::vector<centralheader> chs;
     std::vector<std::future<compressresult>> futures;
-    futures.reserve(num_threads);
-    for(const auto &i : files) {
-        if(futures.size() >= (size_t)num_threads) {
-            pop_future(ofile, futures, chs);
+    futures.reserve(files.size());
+    size_t i=0;
+    for(const auto &f : files) {
+        int running, finished;
+        while(!futures.empty() && i<futures.size() && ready(futures, i)) {
+            pop_future(ofile, futures, i++, chs);
         }
-        futures.emplace_back(std::async(std::launch::async, [&i] { return compress_entry(i); }));
+        do {
+            std::this_thread::yield();
+            count_states(futures, i, running, finished);
+        } while(running >= num_threads);
+        futures.emplace_back(std::async(std::launch::async, [&f] { return compress_entry(f); }));
     }
-    while(!futures.empty()) {
-        pop_future(ofile, futures, chs);
+    while(i<futures.size()) {
+        pop_future(ofile, futures, i++, chs);
     }
-    futures.clear();
     uint64_t ch_offset = ofile.tell();
     for(const auto &ch : chs) {
         write_central_header(ofile, ch);
