@@ -18,7 +18,7 @@
 #include"file.h"
 #include"utils.h"
 #include"mmapper.h"
-#include<endian.h>
+#include<portable_endian.h>
 #include<sys/stat.h>
 
 File::File(const std::string &fname, const char *mode) {

@@ -19,7 +19,7 @@
 #include"utils.h"
 #include"fileutils.h"
 #include"mmapper.h"
-#include<endian.h>
+#include<portable_endian.h>
 #include<sys/stat.h>
 #include<fcntl.h>
 #include<unistd.h>
