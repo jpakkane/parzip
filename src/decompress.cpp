@@ -29,6 +29,7 @@
 #include"fileutils.h"
 #include"file.h"
 
+#include<portable_endian.h>
 #include<lzma.h>
 #include<zlib.h>
 
