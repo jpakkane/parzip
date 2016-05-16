@@ -233,7 +233,7 @@ ZipCreator::ZipCreator(const std::string fname) : fname(fname) {
 }
 
 void ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
-    const int max_waiting_threads = 100;
+    const int max_waiting_threads = 1000;
     File ofile(fname, "wb");
     endrecord ed;
     std::vector<centralheader> chs;
