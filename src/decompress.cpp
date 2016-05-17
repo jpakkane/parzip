@@ -33,6 +33,7 @@
 #include<lzma.h>
 #include<zlib.h>
 
+#include<unistd.h>
 #include<utime.h>
 #include<sys/stat.h>
 #include<algorithm>
