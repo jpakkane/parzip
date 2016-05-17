@@ -41,8 +41,13 @@ fileinfo get_unix_stats(const std::string &fname) {
     sd.fname = fname;
     sd.ue.uid = buf.st_uid;
     sd.ue.gid = buf.st_gid;
+#if defined(__APPLE__)
+    sd.ue.atime = buf.st_atimespec.tv_sec;
+    sd.ue.mtime = buf.st_mtimespec.tv_sec;
+#else
     sd.ue.atime = buf.st_atim.tv_sec;
     sd.ue.mtime = buf.st_mtim.tv_sec;
+#endif
     sd.mode = buf.st_mode;
     sd.fsize = buf.st_size;
     return sd;
