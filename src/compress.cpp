@@ -113,6 +113,8 @@ compressresult store_file(const fileinfo &fi) {
     compressresult result{File(f), FILE_ENTRY, (uint32_t)-1, ZIP_NO_COMPRESSION, fi};
     auto mmap = result.f.mmap();
     result.crc32 = CRC32(mmap, mmap.size());
+    // Status writer expects location to be at the end of the file.
+    result.f.seek(0, SEEK_END);
     return result;
 }
 
@@ -145,10 +147,10 @@ compressresult create_symlink(const fileinfo &fi) {
 
 compressresult compress_entry(const fileinfo &f) {
     if(S_ISREG(f.mode)) {
-        if(f.fsize > 0) {
-            return compress_lzma(f);
+        if(f.fsize < TOO_SMALL_FOR_LZMA) {
+            return store_file(f);
         }
-        return store_file(f);
+        return compress_lzma(f);
     }
     if(S_ISDIR(f.mode)) {
         return create_dir(f);

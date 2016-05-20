@@ -196,19 +196,25 @@ centralheader write_entry(File &ofile, const compressresult &compression_result)
     return ch;
 }
 
-void pop_future(File &ofile,
-        std::vector<std::future<compressresult>> &futures,
-        int i,
+void handle_future(File &ofile,
+        std::future<compressresult> &f,
         std::vector<centralheader> &chs) {
     try {
-        auto res = futures[i].get();
+        auto res = f.get();
         chs.push_back(write_entry(ofile, res));
-        printf("OK: %s\n", res. fi.fname.c_str());
+        printf("OK: %s\n", res.fi.fname.c_str());
     } catch(const std::exception &e) {
         printf("FAIL: %s\n", e.what());
     } catch(...) {
         printf("FAIL: unknown reason.");
     }
+}
+
+void pop_future(File &ofile,
+        std::vector<std::future<compressresult>> &futures,
+        int i,
+        std::vector<centralheader> &chs) {
+    handle_future(ofile, futures[i], chs);
 }
 
 bool ready(const std::vector<std::future<compressresult>> &futures, size_t i) {
@@ -225,6 +231,13 @@ void count_states(const std::vector<std::future<compressresult>> &futures, size_
             running++;
         }
     }
+}
+
+/*
+ * Spawning full async for small operations is wasteful.
+ */
+bool handle_inthread(const fileinfo &fi) {
+    return !(is_file(fi) && fi.fsize >= TOO_SMALL_FOR_LZMA);
 }
 
 }
@@ -259,28 +272,33 @@ void ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
             std::this_thread::yield();
             count_states(futures, i, running, finished);
         } while(running >= num_threads);
-        // If we exhaust the maximum number of threads waiting to be written we must wait
-        // until resources become available. This means not pegging the cpus to the max
+        // If we exhaust the maximum number of results waiting to be written we must wait
+        // until resources become available. This means not pegging cpus to the max
         // but there does not seem to be a way to easily work around this.
         while(!futures.empty() && i<futures.size() && running + finished >= max_waiting_threads) {
             pop_future(ofile, futures, i++, chs);
             count_states(futures, i, running, finished);
         }
-        futures.emplace_back(std::async(std::launch::async, [&f] { const int max_name_size = 15; // 16 with \0
-            std::string thrname;
-            thrname.reserve(max_name_size);
-            if(f.fname.length() < max_name_size-2) {
-                thrname = "c " + f.fname;
-            } else {
-                thrname = "c ..." + f.fname.substr(f.fname.length()-(max_name_size-5));
-            }
+        if(handle_inthread(f)) {
+            futures.emplace_back(std::async(std::launch::deferred, [&f] { return compress_entry(f); }));
+            futures.back().wait();
+        } else {
+            futures.emplace_back(std::async(std::launch::async, [&f] { const int max_name_size = 15; // 16 with \0
+                std::string thrname;
+                thrname.reserve(max_name_size);
+                if(f.fname.length() < max_name_size-2) {
+                    thrname = "c " + f.fname;
+                } else {
+                    thrname = "c ..." + f.fname.substr(f.fname.length()-(max_name_size-5));
+                }
 #if defined(__APPLE__)
-            pthread_setname_np(thrname.c_str());
+                pthread_setname_np(thrname.c_str());
 #else
-            pthread_setname_np(pthread_self(), thrname.c_str());
+                pthread_setname_np(pthread_self(), thrname.c_str());
 #endif
-            return compress_entry(f);
-        }));
+                return compress_entry(f);
+            }));
+        }
     }
     while(i<futures.size()) {
         pop_future(ofile, futures, i++, chs);
