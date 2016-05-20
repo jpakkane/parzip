@@ -20,6 +20,6 @@
 #include"zipdefs.h"
 #include<string>
 
-void unpack_entry(const localheader &lh,
+bool unpack_entry(const localheader &lh,
         const centralheader &ch,
         const unsigned char *data_start, uint64_t data_size);

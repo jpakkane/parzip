@@ -129,3 +129,8 @@ struct endrecord {
     uint32_t dir_offset_start_disk;
     std::string comment;
 };
+
+struct task_statistics {
+    uint64_t success;
+    uint64_t fail;
+};

@@ -198,23 +198,28 @@ centralheader write_entry(File &ofile, const compressresult &compression_result)
 
 void handle_future(File &ofile,
         std::future<compressresult> &f,
-        std::vector<centralheader> &chs) {
+        std::vector<centralheader> &chs,
+        task_statistics &ts) {
     try {
         auto res = f.get();
         chs.push_back(write_entry(ofile, res));
         printf("OK: %s\n", res.fi.fname.c_str());
+        ts.success++;
     } catch(const std::exception &e) {
         printf("FAIL: %s\n", e.what());
+        ts.fail++;
     } catch(...) {
         printf("FAIL: unknown reason.");
+        ts.fail++;
     }
 }
 
 void pop_future(File &ofile,
         std::vector<std::future<compressresult>> &futures,
         int i,
-        std::vector<centralheader> &chs) {
-    handle_future(ofile, futures[i], chs);
+        std::vector<centralheader> &chs,
+        task_statistics &ts) {
+    handle_future(ofile, futures[i], chs, ts);
 }
 
 bool ready(const std::vector<std::future<compressresult>> &futures, size_t i) {
@@ -254,6 +259,7 @@ void ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
     std::vector<std::future<compressresult>> futures;
     futures.reserve(files.size());
     size_t i=0;
+    task_statistics ts{0, 0};
     /*
      * Keeping all CPU cores pegged seems like a simple thing but has a few kinks:
      *
@@ -266,7 +272,7 @@ void ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
     for(const auto &f : files) {
         int running, finished;
         while(!futures.empty() && i<futures.size() && ready(futures, i)) {
-            pop_future(ofile, futures, i++, chs);
+            pop_future(ofile, futures, i++, chs, ts);
         }
         do {
             std::this_thread::yield();
@@ -276,7 +282,7 @@ void ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
         // until resources become available. This means not pegging cpus to the max
         // but there does not seem to be a way to easily work around this.
         while(!futures.empty() && i<futures.size() && running + finished >= max_waiting_threads) {
-            pop_future(ofile, futures, i++, chs);
+            pop_future(ofile, futures, i++, chs, ts);
             count_states(futures, i, running, finished);
         }
         if(handle_inthread(f)) {
@@ -301,7 +307,7 @@ void ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
         }
     }
     while(i<futures.size()) {
-        pop_future(ofile, futures, i++, chs);
+        pop_future(ofile, futures, i++, chs, ts);
     }
     uint64_t ch_offset = ofile.tell();
     for(const auto &ch : chs) {
@@ -336,4 +342,7 @@ void ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
     ed.dir_size = 0xFFFFFFFF;
     ed.dir_offset_start_disk = 0xFFFFFFFF;
     write_end_record(ofile, ed);
+    printf("\n");
+    printf("Success: %ld\n", ts.success);
+    printf("Fail:    %ld\n", ts.fail);
 }

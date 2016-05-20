@@ -283,7 +283,7 @@ void set_unix_permissions(const localheader &lh, const centralheader &ch, const 
 
 }
 
-void unpack_entry(const localheader &lh,
+bool unpack_entry(const localheader &lh,
         const centralheader &ch,
         const unsigned char *data_start, uint64_t data_size) {
     try {
@@ -292,6 +292,7 @@ void unpack_entry(const localheader &lh,
             set_unix_permissions(lh, ch, lh.fname);
         }
         printf("OK: %s\n", lh.fname.c_str());
+        return true;
     } catch(const std::exception &e) {
         printf("FAIL: %s\n", lh.fname.c_str());
         printf("  %s\n", e.what());
@@ -299,4 +300,5 @@ void unpack_entry(const localheader &lh,
         printf("FAIL: %s\n", lh.fname.c_str());
         printf("  unknown error\n");
     }
+    return false;
 }

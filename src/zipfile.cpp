@@ -172,14 +172,19 @@ endrecord read_end_record(File &f) {
     return el;
 }
 
-void wait_for_slot(std::vector<std::future<void>> &entries, const int num_threads) {
+void wait_for_slot(std::vector<std::future<bool>> &entries, const int num_threads, task_statistics &ts) {
     if((int)entries.size() < num_threads)
         return;
     while(true) {
-        auto finished = std::find_if(entries.begin(), entries.end(), [](const std::future<void> &e) {
+        auto finished = std::find_if(entries.begin(), entries.end(), [](const std::future<bool> &e) {
             return e.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
         });
         if(finished != entries.end()) {
+            if(finished->get()) {
+                ts.success++;
+            } else {
+                ts.fail++;
+            }
             entries.erase(finished);
             return;
         }
@@ -262,18 +267,29 @@ void ZipFile::unzip(int num_threads) const {
         throw_system("Could not open zip file:");
     }
     MMapper map(fd, fsize);
+    task_statistics ts{0, 0};
 
     unsigned char *file_start = map;
-    std::vector<std::future<void>> futures;
+    std::vector<std::future<bool>> futures;
     futures.reserve(num_threads);
     for(size_t i=0; i<entries.size(); i++) {
-        wait_for_slot(futures, num_threads);
+        wait_for_slot(futures, num_threads, ts);
         auto unstoretask = [this, file_start, i](){
-                unpack_entry(entries[i],
+                return unpack_entry(entries[i],
                         centrals[i],
                         file_start + data_offsets[i],
                         entries[i].compressed_size);
                 };
         futures.emplace_back(std::async(std::launch::async, unstoretask));
     }
+    for(auto &f : futures) {
+        if(f.get()) {
+            ts.success++;
+        } else {
+            ts.fail++;
+        }
+    }
+    printf("\n");
+    printf("Success: %ld\n", ts.success);
+    printf("Fail:    %ld\n", ts.fail);
 }
