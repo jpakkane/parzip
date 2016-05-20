@@ -24,6 +24,9 @@
 #include<cstdio>
 #include<vector>
 #include<string>
+#include<algorithm>
+
+#include<cassert>
 
 int main(int argc, char **argv) {
     const int num_threads = std::max((int)std::thread::hardware_concurrency(), 1);
@@ -59,6 +62,15 @@ int main(int argc, char **argv) {
         printf("Scanning input files failed: %s\n", e.what());
         return 1;
     }
+    /*
+     * First all directory entries so they get created before files that go in them.
+     * Then files starting from the biggest ones, because a big file followed by lots of small files
+     * causes waste of resources. See zipfile.cpp for the explanation.
+     */
+    auto midpoint = std::stable_partition(files.begin(), files.end(), [](const fileinfo&fi) { return is_dir(fi); });
+    assert(midpoint >= files.begin());
+    assert(midpoint <= files.end());
+    std::sort(midpoint, files.end(), [](const fileinfo &f1, const fileinfo &f2) { return f1.fsize > f2.fsize; });
     ZipCreator zc(argv[1]);
     try {
         zc.create(files, num_threads);

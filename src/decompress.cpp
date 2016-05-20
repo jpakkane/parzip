@@ -38,10 +38,11 @@
 #include<sys/stat.h>
 #include<algorithm>
 #include<cstdint>
-#include <cstdio>
+
 #include <cstring>
 #include <cassert>
 #include<cstdio>
+#include<cstdlib>
 
 #include<memory>
 
