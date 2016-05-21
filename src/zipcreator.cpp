@@ -309,6 +309,9 @@ void ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
     while(i<futures.size()) {
         pop_future(ofile, futures, i++, chs, ts);
     }
+    if(chs.empty()) {
+        throw std::runtime_error("All files failed to compress.");
+    }
     uint64_t ch_offset = ofile.tell();
     for(const auto &ch : chs) {
         write_central_header(ofile, ch);
