@@ -22,20 +22,57 @@
 
 #include<sys/stat.h>
 #include<unistd.h>
+#include<cassert>
 
 #include<memory>
 #include<stdexcept>
 
 #include<lzma.h>
+#include<zlib.h>
 #include<cstdio>
 
 
 namespace {
 
+compressresult store_file(const fileinfo &fi);
+
+bool is_compressible(const unsigned char *buf, const size_t bufsize) {
+    assert(bufsize > 0);
+    const int blocksize = std::min((size_t)32*1024, bufsize/2);
+    const double required_ratio = 0.92; // Stetson-Harrison constant
+    if(blocksize < 16) {
+        return false;
+    }
+    std::unique_ptr<unsigned char[]> out(new unsigned char [blocksize*2]);
+    // Use zlib for compression test because it is a lot faster than LZMA.
+    auto checkpoint = buf + bufsize/2; // Files usually start with some compressible data like an index.
+    z_stream strm;
+    strm.zalloc = Z_NULL;
+    strm.zfree = Z_NULL;
+    strm.opaque = Z_NULL;
+    auto ret = deflateInit(&strm, -1);
+    if(ret != Z_OK) {
+        throw std::runtime_error("Zlib init failed.");
+    }
+    std::unique_ptr<z_stream, int(*)(z_stream*)> zcloser(&strm, deflateEnd);
+    strm.next_in = (unsigned char*)checkpoint; // Zlib is const-broken.
+    strm.avail_in = blocksize;
+    strm.next_out = out.get();
+    strm.avail_out = 2*blocksize;
+    ret = deflate(&strm, Z_FINISH);
+    if(ret != Z_STREAM_END) {
+        throw std::runtime_error("Zlib compression test failed.");
+    }
+    return ((double)strm.total_out)/blocksize < required_ratio;
+}
+
 compressresult compress_lzma(const fileinfo &fi) {
     const int CHUNK=1024*1024;
     File infile(fi.fname, "rb");
     MMapper buf = infile.mmap();
+    if(!is_compressible(buf, buf.size())) {
+        return store_file(fi);
+    }
     FILE *f = tmpfile();
     std::unique_ptr<unsigned char[]> out(new unsigned char [CHUNK]);
     uint32_t filter_size;
