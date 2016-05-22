@@ -2,6 +2,11 @@
 
 A command line utility to pack and unpack zip archives using multiple threads.
 
+Check out performance benchmarks on
+[decompression](http://nibblestew.blogspot.com/2016/05/jzip-parallel-unzipper-performance.html)
+and
+[compression](http://nibblestew.blogspot.com/2016/05/performance-testing-new-parallel-zip.html).
+
 Licensed under GPLv3 or later.
 
 ## Supports
