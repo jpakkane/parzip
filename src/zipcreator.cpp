@@ -206,7 +206,7 @@ void handle_future(File &ofile,
         std::vector<centralheader> &chs,
         task_statistics &ts) {
     try {
-        auto res = f.get();
+        compressresult res(f.get());
         chs.push_back(write_entry(ofile, res));
         printf("OK: %s\n", res.fi.fname.c_str());
         ts.success++;

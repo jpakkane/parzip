@@ -30,9 +30,10 @@ private:
 
 public:
 
-    File() = delete;
+    File() : f(nullptr) {};
     File(const File &) = delete;
     File(File &&other) { f = other.f; other.f = nullptr; }
+    File& operator=(File &&other) { f = other.f; other.f = nullptr; return *this; }
     ~File();
 
     File(const std::string &fname, const char *mode);

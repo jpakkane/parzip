@@ -1,3 +1,9 @@
+if host_machine.system() == 'windows'
+  linkargs = 'Ws2_32.lib'
+else
+  linkargs = []
+endif
+
 zl = static_library('parzcore',
   'zipfile.cpp',
   'compress.cpp',
@@ -14,6 +20,7 @@ executable('parunzip',
   'parunzip.cpp',
   link_with : zl,
   install : true,
+  link_args : linkargs,
   dependencies : threaddep,
 )
 
@@ -21,6 +28,7 @@ executable('parzip',
   'parzip.cpp',
   link_with : zl,
   install : true,
+  link_args : linkargs,
   dependencies : threaddep
 )
 

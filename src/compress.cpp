@@ -205,10 +205,14 @@ compressresult create_symlink(const fileinfo &fi) {
 
 compressresult compress_entry(const fileinfo &f) {
     if(S_ISREG(f.mode)) {
+#ifdef _WIN32
+        return store_file(f);
+#else
         if(f.fsize < TOO_SMALL_FOR_LZMA) {
             return store_file(f);
         }
         return compress_lzma(f);
+#endif
     }
     if(S_ISDIR(f.mode)) {
         return create_dir(f);
