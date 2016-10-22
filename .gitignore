@@ -6,3 +6,6 @@
 /jzip.pro*
 *~
 __pycache__
+*.pro
+*.pro.*
+.DS_Store

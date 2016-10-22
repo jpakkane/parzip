@@ -13,6 +13,7 @@ zl = static_library('parzcore',
   'file.cpp',
   'mmapper.cpp',
   'zipcreator.cpp',
+  'taskcontrol.cpp',
   dependencies : compr_deps + [threaddep]
 )
 
