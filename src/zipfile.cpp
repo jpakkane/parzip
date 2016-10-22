@@ -200,7 +200,7 @@ void wait_for_slot(std::vector<std::future<bool>> &entries, const int num_thread
 
 }
 
-ZipFile::ZipFile(const char *fname) : zipfile(fname, "r") {
+ZipFile::ZipFile(const char *fname) : zipfile(fname, "rb") {
     readLocalFileHeaders();
     readCentralDirectory();
     if(entries.size() != centrals.size()) {
