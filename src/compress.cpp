@@ -36,6 +36,10 @@
 #include<cstdio>
 
 
+#ifndef _WIN32
+using std::min;
+#endif
+
 namespace {
 
 compressresult store_file(const fileinfo &fi);

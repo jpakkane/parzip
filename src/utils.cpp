@@ -32,6 +32,10 @@
 #include<stdexcept>
 #include<string>
 
+#ifndef _WIN32
+using std::min;
+#endif
+
 void throw_system(const char *msg) {
     std::string error(msg);
     assert(errno != 0);
