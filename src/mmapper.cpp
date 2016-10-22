@@ -19,13 +19,16 @@
 #include<fcntl.h>
 
 #include"mmapper.h"
+#include"file.h"
 #include"utils.h"
 
-MMapper::MMapper(int fd, uint64_t size) : map_size(size) {
-    if(size == 0) {
+MMapper::MMapper(const File &f) {
+    map_size = f.size();
+    auto fdnum = f.fileno();
+    if(map_size == 0) {
         addr = nullptr;
     } else {
-        addr = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
+        addr = ::mmap(nullptr, map_size, PROT_READ, MAP_PRIVATE, fdnum, 0);
         if(addr == MAP_FAILED) {
             throw_system("Could not mmap file:");
         }

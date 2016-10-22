@@ -266,7 +266,7 @@ void ZipFile::unzip(int num_threads) const {
     if(fd < 0) {
         throw_system("Could not open zip file:");
     }
-    MMapper map(fd, fsize);
+    MMapper map(zipfile);
     task_statistics ts{0, 0};
 
     unsigned char *file_start = map;

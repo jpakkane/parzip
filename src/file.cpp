@@ -53,7 +53,7 @@ int File::fileno() const {
 }
 
 MMapper File::mmap() const {
-    return MMapper(fileno(), size());
+    return MMapper(*this);
 }
 
 void File::read(void *buf, size_t bufsize) {

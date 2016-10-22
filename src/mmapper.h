@@ -19,9 +19,11 @@
 
 #include<cstdint>
 
+class File;
+
 class MMapper final {
 public:
-    MMapper(int fd, uint64_t size);
+    explicit MMapper(const File &file);
     MMapper(const MMapper&) = delete;
     MMapper(MMapper && other);
     MMapper& operator=(const MMapper &) = delete;
