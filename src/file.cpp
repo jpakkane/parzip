@@ -48,11 +48,19 @@ void File::close() {
     }
 }
 
-long File::tell() const {
+int64_t File::tell() const {
+#ifdef _WIN32
+    return _ftelli64(f);
+#else
     return ftell(f);
+#endif
 }
-int File::seek(long offset, int whence) {
+int File::seek(int64_t offset, int whence) {
+#ifdef _WIN32
+    return _fseeki64(f, offset, whence);
+#else
     return fseek(f, offset, whence);
+#endif
 }
 
 int File::fileno() const {

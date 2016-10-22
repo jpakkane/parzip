@@ -42,8 +42,8 @@ public:
     operator FILE*() { return f; }
 
     FILE* get() const { return f; }
-    long tell() const;
-    int seek(long offset, int whence=SEEK_SET);
+    int64_t tell() const;
+    int seek(int64_t offset, int whence=SEEK_SET);
     int fileno() const;
 
     MMapper mmap() const;
