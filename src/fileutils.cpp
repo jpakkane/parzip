@@ -68,29 +68,49 @@ fileinfo get_unix_stats(const std::string &fname) {
 }
 
 #ifdef _WIN32
-std::vector<fileinfo> expand_dir(const std::string &dirname) {
-    throw std::runtime_error("Not implemented.");
+std::vector<std::string> handle_dir_platform(const std::string &dirname) {
+    std::string glob = dirname + "\\*.*";
+    std::vector<std::string> entries;
+    HANDLE hFind;
+    WIN32_FIND_DATA data;
+
+    hFind = FindFirstFile(glob.c_str(), &data);
+    if (hFind == INVALID_HANDLE_VALUE) {
+        throw_system("Could not get directory contents: ");
+    }
+    if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+            entries.push_back(data.cFileName);
+        } while(FindNextFile(hFind, &data));
+        FindClose(hFind);
+    }
+    return entries;
 }
 
 #else
 
-std::vector<fileinfo> expand_dir(const std::string &dirname) {
+std::vector<std::string> handle_dir_platform(const std::string &dirname) {
     std::unique_ptr<DIR, int(*)(DIR*)> dirholder(opendir(dirname.c_str()), closedir);
     auto dir = dirholder.get();
     std::array<char, sizeof(dirent) + NAME_MAX + 1> buf;
     struct dirent *cur = reinterpret_cast<struct dirent*>(buf.data());
     struct dirent *de;
-    std::vector<fileinfo> result;
     std::vector<std::string> entries;
     std::string basename;
-    while(readdir_r(dir, cur, &de) == 0 && de) {
+    while (readdir_r(dir, cur, &de) == 0 && de) {
         basename = cur->d_name;
-        if(basename == "." || basename == "..") {
+        if (basename == "." || basename == "..") {
             continue;
         }
         entries.push_back(basename);
     }
+}
+#endif
+
+std::vector<fileinfo> expand_dir(const std::string &dirname) {
     // Always set order to create reproducible zip files.
+    std::vector<fileinfo> result;
+    auto entries = handle_dir_platform(dirname);
     std::sort(entries.begin(), entries.end());
     std::string fullpath;
     for(const auto &base : entries) {
@@ -100,8 +120,6 @@ std::vector<fileinfo> expand_dir(const std::string &dirname) {
     }
     return result;
 }
-
-#endif
 
 std::vector<fileinfo> expand_entry(const std::string &fname) {
     auto fi = get_unix_stats(fname);

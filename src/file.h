@@ -50,6 +50,7 @@ public:
 
     uint64_t size() const;
     void flush();
+    void close();
 
     uint8_t read8();
     uint16_t read16le();

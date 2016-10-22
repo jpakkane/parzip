@@ -223,6 +223,7 @@ void create_file(const localheader &lh, const centralheader &ch, const unsigned 
         unlink(extraction_name.c_str());
         throw std::runtime_error("CRC32 checksum is invalid.");
     }
+    ofile.close();
     if(rename(extraction_name.c_str(), outname.c_str()) != 0) {
         unlink(extraction_name.c_str());
         throw_system("Could not rename tmp file to target file:");

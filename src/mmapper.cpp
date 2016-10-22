@@ -18,6 +18,7 @@
 #if defined(_WIN32)
 #include<winsock2.h>
 #include<windows.h>
+#include<io.h>
 #else
 #include<sys/mman.h>
 #include<fcntl.h>
@@ -30,7 +31,10 @@
 #if defined(_WIN32)
 MMapper::MMapper(const File &f) {
     map_size = f.size();
+    h = CreateFileMapping((HANDLE)_get_osfhandle(f.fileno()), nullptr, PAGE_READONLY, 0, 0, nullptr);
+    addr = MapViewOfFile(h, FILE_MAP_READ, 0, 0, 0);
 }
+
 #else
 MMapper::MMapper(const File &f) {
     map_size = f.size();
@@ -66,6 +70,8 @@ MMapper& MMapper::operator=(MMapper &&other) {
 
 MMapper::~MMapper() {
 #if defined(_WIN32)
+    UnmapViewOfFile(addr);
+    CloseHandle(h);
 #else
   if(addr) {
         munmap(addr, map_size);

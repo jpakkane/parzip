@@ -41,6 +41,13 @@ File::~File() {
     }
 }
 
+void File::close() {
+    if (f) {
+        fclose(f);
+        f = nullptr;
+    }
+}
+
 long File::tell() const {
     return ftell(f);
 }
