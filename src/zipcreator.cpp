@@ -24,9 +24,11 @@
 #include"mmapper.h"
 
 #include<portable_endian.h>
-#include<sys/stat.h>
-#if defined(__WINDOWS__)
+#if defined(_WIN32)
+#include<winsock2.h>
+#include<windows.h>
 #else
+#include<sys/stat.h>
 #include<pthread.h>
 #endif
 
@@ -300,7 +302,7 @@ void ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
                 } else {
                     thrname = "c ..." + f.fname.substr(f.fname.length()-(max_name_size-5));
                 }
-#if defined(__WINDOWS__)
+#if defined(_WIN32)
 #elif defined(__APPLE__)
                 pthread_setname_np(thrname.c_str());
 #else

@@ -18,16 +18,20 @@
 #include"compress.h"
 #include"file.h"
 #include"utils.h"
+#include"fileutils.h"
 #include"mmapper.h"
 
 #include<sys/stat.h>
+#ifdef _WIN32
+#else
 #include<unistd.h>
+#include<lzma.h> // libxz does not work on MSVC.
+#endif
 #include<cassert>
 
 #include<memory>
 #include<stdexcept>
 
-#include<lzma.h>
 #include<zlib.h>
 #include<cstdio>
 
@@ -38,7 +42,7 @@ compressresult store_file(const fileinfo &fi);
 
 bool is_compressible(const unsigned char *buf, const size_t bufsize) {
     assert(bufsize > 0);
-    const int blocksize = std::min((size_t)32*1024, bufsize/2);
+    const int blocksize = min((size_t)32*1024, bufsize/2);
     const double required_ratio = 0.92; // Stetson-Harrison constant
     if(blocksize < 16) {
         return false;
@@ -65,6 +69,13 @@ bool is_compressible(const unsigned char *buf, const size_t bufsize) {
     }
     return ((double)strm.total_out)/blocksize < required_ratio;
 }
+
+#ifdef _WIN32
+compressresult compress_lzma(const fileinfo &fi) {
+    throw std::runtime_error("Liblzma does not work with VS.");
+}
+
+#else
 
 compressresult compress_lzma(const fileinfo &fi) {
     const int CHUNK=1024*1024;
@@ -141,6 +152,8 @@ compressresult compress_lzma(const fileinfo &fi) {
     return result;
 }
 
+#endif
+
 compressresult store_file(const fileinfo &fi) {
     FILE *f = fopen(fi.fname.c_str(), "r");
     if(!f) {
@@ -161,6 +174,9 @@ compressresult create_dir(const fileinfo &fi) {
 }
 
 compressresult create_symlink(const fileinfo &fi) {
+#ifdef _WIN32
+    throw std::runtime_error("Symlinks not supported on Windows.");
+#else
     std::unique_ptr<unsigned char[]> buf(new unsigned char[fi.fsize+1]);
     auto r = readlink(fi.fname.c_str(), (char*)buf.get(), fi.fsize+1);
     if(r<0) {
@@ -178,6 +194,7 @@ compressresult create_symlink(const fileinfo &fi) {
     result.f.write(buf.get(), r);
     result.f.flush();
     return result;
+#endif
 }
 
 }

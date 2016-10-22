@@ -34,3 +34,15 @@ void mkdirp(const std::string &s);
 void create_dirs_for_file(const std::string &s);
 
 std::vector<fileinfo> expand_files(const std::vector<std::string> &originals);
+
+#if defined _WIN32
+#if !defined S_ISDIR
+#define S_ISDIR(m) (((m) & _S_IFDIR) == _S_IFDIR)
+#endif
+#if !defined S_ISREG
+#define S_ISREG(m) (((m) & _S_IFREG) == _S_IFREG)
+#endif
+#if !defined S_ISLNK
+#define S_ISLNK(m) (false)
+#endif
+#endif

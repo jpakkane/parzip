@@ -18,9 +18,15 @@
 #include"fileutils.h"
 #include"utils.h"
 
+#ifdef _WIN32
+#include<WinSock2.h>
+#include<windows.h>
+#include<direct.h>
+#else
 #include<dirent.h>
 #include<sys/stat.h>
 #include<sys/types.h>
+#endif
 #include<memory>
 #include<array>
 #include<cassert>
@@ -32,10 +38,15 @@ namespace {
 
 std::vector<fileinfo> expand_entry(const std::string &fname);
 
+
 fileinfo get_unix_stats(const std::string &fname) {
     struct stat buf;
     fileinfo sd;
+#ifdef _WIN32
+    if (stat(fname.c_str(), &buf) != 0) {
+#else
     if(lstat(fname.c_str(), &buf) != 0) {
+#endif
         throw_system("Could not get entry stats: ");
     }
     sd.fname = fname;
@@ -44,6 +55,9 @@ fileinfo get_unix_stats(const std::string &fname) {
 #if defined(__APPLE__)
     sd.ue.atime = buf.st_atimespec.tv_sec;
     sd.ue.mtime = buf.st_mtimespec.tv_sec;
+#elif defined(_WIN32)
+    sd.ue.atime = buf.st_atime;
+    sd.ue.mtime = buf.st_mtime;
 #else
     sd.ue.atime = buf.st_atim.tv_sec;
     sd.ue.mtime = buf.st_mtim.tv_sec;
@@ -52,6 +66,13 @@ fileinfo get_unix_stats(const std::string &fname) {
     sd.fsize = buf.st_size;
     return sd;
 }
+
+#ifdef _WIN32
+std::vector<fileinfo> expand_dir(const std::string &dirname) {
+    throw std::runtime_error("Not implemented.");
+}
+
+#else
 
 std::vector<fileinfo> expand_dir(const std::string &dirname) {
     std::unique_ptr<DIR, int(*)(DIR*)> dirholder(opendir(dirname.c_str()), closedir);
@@ -79,6 +100,8 @@ std::vector<fileinfo> expand_dir(const std::string &dirname) {
     }
     return result;
 }
+
+#endif
 
 std::vector<fileinfo> expand_entry(const std::string &fname) {
     auto fi = get_unix_stats(fname);
@@ -141,8 +164,12 @@ void mkdirp(const std::string &s) {
             slash = s.size();
         }
         auto curdir = s.substr(0, slash);
-        if(!is_dir(curdir)) {
+        if (!is_dir(curdir)) {
+#ifdef _WIN32
+            _mkdir(curdir.c_str());
+#else
             mkdir(curdir.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+#endif
             if(!is_dir(curdir)) {
                 throw_system("Could not create directory:");
             }
@@ -166,8 +193,8 @@ bool is_absolute_path(const std::string &fname) {
     if(fname.empty()) {
         return false;
     }
-    if(fname.front() == '/' ||
-            (fname.size() > 2 && fname[1] == ':' && fname[2] == '/')) {
+    if(fname.front() == '/' || fname.front() == '\\' ||
+            (fname.size() > 2 && fname[1] == ':' && (fname[2] == '/' || fname[2] == '\\'))) {
         return true;
     }
     return false;

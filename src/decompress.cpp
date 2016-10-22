@@ -30,12 +30,16 @@
 #include"file.h"
 
 #include<portable_endian.h>
-#include<lzma.h>
 #include<zlib.h>
 
+#ifdef _WIN32
+#include<windows.h>
+#else
+#include<lzma.h> // Disabled on Windows because libxz does not compile with MSVC.
 #include<unistd.h>
 #include<utime.h>
 #include<sys/stat.h>
+#endif
 #include<algorithm>
 #include<cstdint>
 
@@ -116,8 +120,14 @@ uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FI
     return crcvalue;
 }
 
+#ifdef _WIN32
 uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile) {
-    uint32_t crcvalue = crc32(0, Z_NULL, 0);
+	throw std::runtime_error("LZMA not supported on Windows.");
+}
+
+#else
+uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile) {
+	uint32_t crcvalue = crc32(0, Z_NULL, 0);
     std::unique_ptr<unsigned char[]> out(new unsigned char [CHUNK]);
     lzma_stream strm = LZMA_STREAM_INIT;
     lzma_filter filter[2];
@@ -164,7 +174,7 @@ uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE 
     } while (true);
     return crcvalue;
 }
-
+#endif
 
 uint32_t unstore_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile) {
     auto bytes_written = fwrite(data_start, 1, data_size, ofile);
@@ -175,10 +185,12 @@ uint32_t unstore_to_file(const unsigned char *data_start, uint64_t data_size, FI
 }
 
 void create_symlink(const unsigned char *data_start, uint64_t data_size, const std::string &outname) {
+#ifndef _WIN32
     std::string symlink_target(data_start, data_start + data_size);
     if(symlink(symlink_target.c_str(), outname.c_str()) != 0) {
         throw_system("Symlink creation failed:");
     }
+#endif
 }
 
 void create_file(const localheader &lh, const centralheader &ch, const unsigned char *data_start, uint64_t data_size, const std::string &outname) {
@@ -218,6 +230,9 @@ void create_file(const localheader &lh, const centralheader &ch, const unsigned 
 }
 
 void create_device(const localheader &lh, const std::string &outname) {
+#ifdef _WIN32
+  // Windows does not have character devices.
+#else
     const std::string &d = lh.unix.data;
     if(d.size() != 8) {
         throw std::runtime_error("Incorrect extra data for character device.");
@@ -227,9 +242,11 @@ void create_device(const localheader &lh, const std::string &outname) {
     if(mknod(outname.c_str(), S_IFCHR, makedev(major, minor)) != 0) {
         throw_system("Could not create device node:");
     }
+#endif
 }
 
 filetype detect_filetype(const localheader &lh, const centralheader &ch) {
+#ifndef _WIN32
     if(ch.version_made_by>>8 == MADE_BY_UNIX) {
         uint16_t extattrs = ch.external_file_attributes >> 16;
         if(S_ISDIR(extattrs)) {
@@ -247,6 +264,7 @@ filetype detect_filetype(const localheader &lh, const centralheader &ch) {
             return UNKNOWN_ENTRY;
         }
     }
+#endif
     // Nothing much to do.
     if(lh.fname.back() == '/') {
         return DIRECTORY_ENTRY;
@@ -265,6 +283,7 @@ void do_unpack(const localheader &lh, const centralheader &ch, const unsigned ch
 }
 
 void set_unix_permissions(const localheader &lh, const centralheader &ch, const std::string &fname) {
+#ifndef _WIN32
     // This part of the zip spec is poorly documented. :(
     // https://trac.edgewall.org/attachment/ticket/8919/ZipDownload.patch
     chmod(fname.c_str(), ch.external_file_attributes >> 16);
@@ -279,6 +298,7 @@ void set_unix_permissions(const localheader &lh, const centralheader &ch, const 
         utime(fname.c_str(), &tb);
         chown(fname.c_str(), lh.unix.uid, lh.unix.gid);
     }
+#endif
 }
 
 }

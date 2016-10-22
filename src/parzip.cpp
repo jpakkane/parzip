@@ -19,7 +19,12 @@
 #include"zipcreator.h"
 #include"utils.h"
 
+#ifdef _WIN32
+#include<WinSock2.h>
+#include<windows.h>
+#else
 #include<unistd.h>
+#endif
 #include<thread>
 #include<cstdio>
 #include<vector>
@@ -29,7 +34,7 @@
 #include<cassert>
 
 int main(int argc, char **argv) {
-    const int num_threads = std::max((int)std::thread::hardware_concurrency(), 1);
+    const int num_threads = max((int)std::thread::hardware_concurrency(), 1);
     if(argc < 3) {
         printf("%s <zip file> <files to archive>\n", argv[0]);
         return 1;

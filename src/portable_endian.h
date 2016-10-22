@@ -6,9 +6,9 @@
 
 #pragma once
 
-#if (defined(_WIN16) || defined(_WIN32) || defined(_WIN64)) && !defined(__WINDOWS__)
+#if (defined(_WIN16) || defined(_WIN32) || defined(_WIN64))
 
-#	define __WINDOWS__
+#	define __WINDOWS_ZZZ__
 
 #endif
 
@@ -57,10 +57,10 @@
 #	define be64toh(x) betoh64(x)
 #	define le64toh(x) letoh64(x)
 
-#elif defined(__WINDOWS__)
+#elif defined(__WINDOWS_ZZZ__)
 
-#	include <winsock2.h>
-#	include <sys/param.h>
+#include <winsock2.h>
+/*#	include <sys/param.h>*/
 
 #	if BYTE_ORDER == LITTLE_ENDIAN
 

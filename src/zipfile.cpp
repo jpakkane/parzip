@@ -20,9 +20,14 @@
 #include"fileutils.h"
 #include"mmapper.h"
 #include<portable_endian.h>
+#ifdef _WIN32
+#include<winsock2.h>
+#include<windows.h>
+#else
 #include<sys/stat.h>
 #include<fcntl.h>
 #include<unistd.h>
+#endif
 #include<cstdio>
 #include<cerrno>
 #include<cstring>

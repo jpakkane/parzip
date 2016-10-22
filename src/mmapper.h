@@ -17,6 +17,10 @@
 
 #pragma once
 
+#ifdef _WIN32
+#include<winsock2.h>
+#include<windows.h>
+#endif
 #include<cstdint>
 
 class File;
@@ -37,4 +41,7 @@ public:
 private:
     void *addr;
     uint64_t map_size;
+#if defined(_WIN32)
+    HANDLE h;
+#endif
 };

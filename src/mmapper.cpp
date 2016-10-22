@@ -15,13 +15,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#if defined(_WIN32)
+#include<winsock2.h>
+#include<windows.h>
+#else
 #include<sys/mman.h>
 #include<fcntl.h>
+#endif
 
 #include"mmapper.h"
 #include"file.h"
 #include"utils.h"
 
+#if defined(_WIN32)
+MMapper::MMapper(const File &f) {
+    map_size = f.size();
+}
+#else
 MMapper::MMapper(const File &f) {
     map_size = f.size();
     auto fdnum = f.fileno();
@@ -34,6 +44,7 @@ MMapper::MMapper(const File &f) {
         }
     }
 }
+#endif
 
 MMapper::MMapper(MMapper && other) {
     if(&other == this) {
@@ -54,7 +65,10 @@ MMapper& MMapper::operator=(MMapper &&other) {
 }
 
 MMapper::~MMapper() {
-    if(addr) {
+#if defined(_WIN32)
+#else
+  if(addr) {
         munmap(addr, map_size);
     }
+#endif
 }

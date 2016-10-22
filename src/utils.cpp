@@ -18,6 +18,11 @@
 #include"utils.h"
 #include"mmapper.h"
 
+#if _WIN32
+#include<winsock2.h>
+#include<windows.h>
+#endif
+
 #include<zlib.h>
 
 #include<cerrno>
@@ -41,13 +46,10 @@ uint32_t CRC32(const unsigned char *buf, uint64_t bufsize) {
     uint32_t crcvalue = crc32(0, Z_NULL, 0);
     const uint64_t blocksize = 1024*1024;
     for(uint64_t offset=0; offset < bufsize; offset+=blocksize) {
-        crcvalue = crc32(crcvalue, buf+offset, std::min(blocksize, bufsize-offset));
+        crcvalue = crc32(crcvalue, buf+offset, min(blocksize, bufsize-offset));
     }
     return crcvalue;
 }
-
-#include<sys/mman.h>
-#include<memory>
 
 uint32_t CRC32(File &f) {
     MMapper mmap = f.mmap();

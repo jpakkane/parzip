@@ -7,7 +7,7 @@ zl = static_library('parzcore',
   'file.cpp',
   'mmapper.cpp',
   'zipcreator.cpp',
-  dependencies : [zdep, lzmadep, threaddep]
+  dependencies : compr_deps + [threaddep]
 )
 
 executable('parunzip',
