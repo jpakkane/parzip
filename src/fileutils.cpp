@@ -104,6 +104,7 @@ std::vector<std::string> handle_dir_platform(const std::string &dirname) {
         }
         entries.push_back(basename);
     }
+    return entries;
 }
 #endif
 
