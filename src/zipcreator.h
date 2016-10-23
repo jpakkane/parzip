@@ -17,6 +17,7 @@
 
 #pragma once
 #include"zipdefs.h"
+#include"taskcontrol.h"
 #include<string>
 #include<vector>
 #include<cstdio>
@@ -27,10 +28,10 @@ public:
 
     ZipCreator(const std::string fname);
 
-    void create(const std::vector<fileinfo> &files, int num_threads);
+    TaskControl* create(const std::vector<fileinfo> &files, int num_threads);
 
 private:
 
     std::string fname;
-
+    TaskControl tc;
 };

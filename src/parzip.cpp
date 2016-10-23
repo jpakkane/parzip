@@ -82,7 +82,10 @@ int main(int argc, char **argv) {
     std::sort(midpoint, files.end(), [](const fileinfo &f1, const fileinfo &f2) { return f1.fsize > f2.fsize; });
     ZipCreator zc(argv[1]);
     try {
-        zc.create(files, num_threads);
+        auto *tc = zc.create(files, num_threads);
+        printf("\n");
+        printf("Success: %d\n", (int)tc->successes());
+        printf("Fail:    %d\n", (int)tc->failures());
     } catch(std::exception &e) {
         unlink(argv[1]);
         printf("Zip creation failed: %s\n", e.what());

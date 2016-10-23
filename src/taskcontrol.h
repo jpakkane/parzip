@@ -31,9 +31,17 @@ public:
 
     TaskControl();
 
+    void reserve(size_t num_entries);
     TaskState state() const;
+    void set_state(TaskState new_state);
     int successes() const;
     int failures() const;
+    int total() const;
+
+    void add_success(const std::string &msg);
+    void add_failure(const std::string &msg);
+    size_t finished() const;
+    std::string entry(size_t i) const;
 
 private:
     mutable std::mutex m;
@@ -41,4 +49,5 @@ private:
     std::vector<std::string> results;
     int num_success;
     int num_failures;
+    int total_tasks;
 };
