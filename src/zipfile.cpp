@@ -177,18 +177,19 @@ endrecord read_end_record(File &f) {
     return el;
 }
 
-void wait_for_slot(std::vector<std::future<bool>> &entries, const int num_threads, task_statistics &ts) {
+void wait_for_slot(std::vector<std::future<UnpackResult>> &entries, const int num_threads, TaskControl &tc) {
     if((int)entries.size() < num_threads)
         return;
     while(true) {
-        auto finished = std::find_if(entries.begin(), entries.end(), [](const std::future<bool> &e) {
+        auto finished = std::find_if(entries.begin(), entries.end(), [](const std::future<UnpackResult> &e) {
             return e.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
         });
         if(finished != entries.end()) {
-            if(finished->get()) {
-                ts.success++;
+            auto r = finished->get();
+            if(r.success) {
+                tc.add_success(r.msg);
             } else {
-                ts.fail++;
+                tc.add_failure(r.msg);
             }
             entries.erase(finished);
             return;
@@ -234,6 +235,12 @@ ZipFile::ZipFile(const char *fname) : zipfile(fname, "rb") {
     fsize = zipfile.tell();
 }
 
+ZipFile::~ZipFile() {
+    if(t) {
+        t->join();
+    }
+}
+
 void ZipFile::readLocalFileHeaders() {
     while(true) {
         auto curloc = zipfile.tell();
@@ -266,19 +273,37 @@ void ZipFile::readCentralDirectory() {
     }
 }
 
-void ZipFile::unzip(int num_threads) const {
+TaskControl* ZipFile::unzip(int num_threads) const {
+    if(tc.state() != TASK_NOT_STARTED) {
+        throw std::logic_error("Tried to start an already used packing process.");
+    }
     int fd = zipfile.fileno();
     if(fd < 0) {
         throw_system("Could not open zip file:");
     }
+
+    tc.reserve(entries.size());
+    tc.set_state(TASK_RUNNING);
+    t.reset(new std::thread([this](int num_threads) {
+        try {
+            this->run(num_threads);
+        } catch(const std::exception &e) {
+            printf("Fail: %s\n", e.what());
+        } catch(...) {
+            printf("Unknown fail.\n");
+        }
+    }, num_threads));
+    return &tc;
+}
+
+void ZipFile::run(int num_threads) const {
     MMapper map(zipfile);
-    task_statistics ts{0, 0};
 
     unsigned char *file_start = map;
-    std::vector<std::future<bool>> futures;
+    std::vector<std::future<UnpackResult>> futures;
     futures.reserve(num_threads);
     for(size_t i=0; i<entries.size(); i++) {
-        wait_for_slot(futures, num_threads, ts);
+        wait_for_slot(futures, num_threads, tc);
         auto unstoretask = [this, file_start, i](){
                 return unpack_entry(entries[i],
                         centrals[i],
@@ -288,13 +313,12 @@ void ZipFile::unzip(int num_threads) const {
         futures.emplace_back(std::async(std::launch::async, unstoretask));
     }
     for(auto &f : futures) {
-        if(f.get()) {
-            ts.success++;
+        auto r = f.get();
+        if(r.success) {
+            tc.add_success(r.msg);
         } else {
-            ts.fail++;
+            tc.add_failure(r.msg);
         }
     }
-    printf("\n");
-    printf("Success: %ld\n", ts.success);
-    printf("Fail:    %ld\n", ts.fail);
+    tc.set_state(TASK_FINISHED);
 }

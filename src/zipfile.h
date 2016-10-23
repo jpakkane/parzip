@@ -19,19 +19,24 @@
 
 #include"zipdefs.h"
 #include"file.h"
+#include"taskcontrol.h"
 #include<string>
 #include<vector>
+#include<thread>
 
 class ZipFile {
 
 public:
     ZipFile(const char *fname);
+    ~ZipFile();
 
     size_t size() const { return entries.size(); }
 
-    void unzip(int num_threads) const;
+    TaskControl* unzip(int num_threads) const;
 
 private:
+
+    void run(int num_threads) const;
 
     void readLocalFileHeaders();
     void readCentralDirectory();
@@ -45,4 +50,7 @@ private:
     zip64locator z64loc;
     endrecord endloc;
     size_t fsize;
+
+    mutable std::unique_ptr<std::thread> t;
+    mutable TaskControl tc;
 };

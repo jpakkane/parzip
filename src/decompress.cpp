@@ -122,12 +122,12 @@ uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FI
 
 #ifdef _WIN32
 uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile) {
-	throw std::runtime_error("LZMA not supported on Windows.");
+    throw std::runtime_error("LZMA not supported on Windows.");
 }
 
 #else
 uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile) {
-	uint32_t crcvalue = crc32(0, Z_NULL, 0);
+    uint32_t crcvalue = crc32(0, Z_NULL, 0);
     std::unique_ptr<unsigned char[]> out(new unsigned char [CHUNK]);
     lzma_stream strm = LZMA_STREAM_INIT;
     lzma_filter filter[2];
@@ -304,7 +304,7 @@ void set_unix_permissions(const localheader &lh, const centralheader &ch, const 
 
 }
 
-bool unpack_entry(const localheader &lh,
+UnpackResult unpack_entry(const localheader &lh,
         const centralheader &ch,
         const unsigned char *data_start, uint64_t data_size) {
     try {
@@ -312,14 +312,10 @@ bool unpack_entry(const localheader &lh,
         if(ch.version_made_by>>8 == MADE_BY_UNIX) {
             set_unix_permissions(lh, ch, lh.fname);
         }
-        printf("OK: %s\n", lh.fname.c_str());
-        return true;
+        return UnpackResult{true, "OK: " + lh.fname};
     } catch(const std::exception &e) {
-        printf("FAIL: %s\n", lh.fname.c_str());
-        printf("  %s\n", e.what());
+        return UnpackResult{false, "FAIL: " + lh.fname + "\n" + e.what()};
     } catch(...) {
-        printf("FAIL: %s\n", lh.fname.c_str());
-        printf("  unknown error\n");
     }
-    return false;
+    return UnpackResult{false, "FAIL: " + lh.fname + "  unknown error"};
 }

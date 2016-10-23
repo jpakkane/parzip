@@ -35,9 +35,23 @@ int main(int argc, char **argv) {
         printf("%s <zip file>\n", argv[0]);
         return 1;
     }
+    int num_failures;
     try {
+        size_t i = 0;
         ZipFile f(argv[1]);
-        f.unzip(num_threads);
+        TaskControl *tc = f.unzip(num_threads);
+        size_t total_tasks = tc->total();
+        while(i<total_tasks) {
+            if(i>=tc->finished()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            } else {
+                auto txt = tc->entry(i++);
+                printf("%s\n", txt.c_str());
+            }
+        }
+        printf("Success: %ld\n", (long)tc->successes());
+        printf("Fail:    %ld\n", (long)tc->failures());
+        num_failures = (int)tc->failures();
     } catch(std::exception &e) {
         printf("Unpacking failed: %s\n", e.what());
         return 1;
@@ -45,5 +59,5 @@ int main(int argc, char **argv) {
         printf("Unpacking failed due to an unknown reason.");
         return 1;
     }
-    return 0;
+    return num_failures;
 }
