@@ -252,19 +252,41 @@ bool handle_inthread(const fileinfo &fi) {
 }
 
 ZipCreator::ZipCreator(const std::string fname) : fname(fname) {
+}
 
+ZipCreator::~ZipCreator() {
+    if(t) {
+        t->join();
+    }
 }
 
 TaskControl* ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
+    if(tc.state() != TASK_NOT_STARTED) {
+        throw std::logic_error("Tried to start an already used packing process.");
+    }
+
+    tc.reserve(files.size());
+    tc.set_state(TASK_RUNNING);
+    t.reset(new std::thread([this](const std::vector<fileinfo> &files, int num_threads) {
+        try {
+            this->run(files, num_threads);
+        } catch(const std::exception &e) {
+            printf("Fail: %s\n", e.what());
+        } catch(...) {
+            printf("Unknown fail.\n");
+        }
+    }, files, num_threads));
+    return &tc;
+}
+
+void ZipCreator::run(const std::vector<fileinfo> &files, int num_threads) {
     const int max_waiting_threads = 1000;
     File ofile(fname, "wb");
     endrecord ed;
     std::vector<centralheader> chs;
     std::vector<std::future<compressresult>> futures;
     futures.reserve(files.size());
-    tc.reserve(files.size());
     size_t i=0;
-    tc.set_state(TASK_RUNNING);
     /*
      * Keeping all CPU cores pegged seems like a simple thing but has a few kinks:
      *
@@ -352,5 +374,4 @@ TaskControl* ZipCreator::create(const std::vector<fileinfo> &files, int num_thre
     ed.dir_offset_start_disk = 0xFFFFFFFF;
     write_end_record(ofile, ed);
     tc.set_state(TASK_FINISHED);
-    return &tc;
 }

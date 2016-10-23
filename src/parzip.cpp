@@ -30,6 +30,7 @@
 #include<vector>
 #include<string>
 #include<algorithm>
+#include<chrono>
 
 #include<cassert>
 
@@ -81,11 +82,23 @@ int main(int argc, char **argv) {
     assert(midpoint <= files.end());
     std::sort(midpoint, files.end(), [](const fileinfo &f1, const fileinfo &f2) { return f1.fsize > f2.fsize; });
     ZipCreator zc(argv[1]);
+    int num_failures;
     try {
+        size_t i=0;
         auto *tc = zc.create(files, num_threads);
+        size_t total_tasks = tc->total();
+        while(i<total_tasks) {
+            if(i>=tc->finished()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            } else {
+                auto txt = tc->entry(i++);
+                printf("%s\n", txt.c_str());
+            }
+        }
         printf("\n");
         printf("Success: %d\n", (int)tc->successes());
         printf("Fail:    %d\n", (int)tc->failures());
+        num_failures = tc->failures();
     } catch(std::exception &e) {
         unlink(argv[1]);
         printf("Zip creation failed: %s\n", e.what());
@@ -95,5 +108,5 @@ int main(int argc, char **argv) {
         printf("Zip creation failed due to an unknown reason.");
         return 1;
     }
-    return 0;
+    return num_failures;
 }
