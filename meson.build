@@ -11,6 +11,12 @@ else
   compr_deps = [zdep]
 endif
 threaddep = dependency('threads')
+gtkdep = dependency('gtk+-3.0', required : false)
 
 subdir('man')
 subdir('src')
+
+if gtkdep.found()
+  subdir('gtk')
+endif
+
