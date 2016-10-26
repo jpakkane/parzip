@@ -32,8 +32,26 @@ enum ViewColumns {
     N_COLUMNS,
 };
 
-app buildgui() {
-    app a;
+void open_file(GtkMenuItem *, gpointer data) {
+    app *a = reinterpret_cast<app*>(data);
+    GtkWidget *fc = gtk_file_chooser_dialog_new("Select ZIP file", GTK_WINDOW(a->win),
+                GTK_FILE_CHOOSER_ACTION_OPEN,
+                "_Cancel", GTK_RESPONSE_CANCEL,
+                "_Open", GTK_RESPONSE_ACCEPT,
+                nullptr);
+    GtkFileFilter *filter = gtk_file_filter_new();
+    gtk_file_filter_add_pattern(filter, "*.zip");
+    gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(fc), filter);
+    auto res = gtk_dialog_run(GTK_DIALOG(fc));
+    if(res == GTK_RESPONSE_ACCEPT) {
+        auto filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(fc));
+        printf("%s\n", filename);
+        g_free(filename);
+    }
+    gtk_widget_destroy(fc);
+}
+
+void buildgui(app &a) {
     a.win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(a.win), "Parzip");
     gtk_window_set_default_size(GTK_WINDOW(a.win), 640, 480);
@@ -43,11 +61,15 @@ app buildgui() {
     // Menus
     a.menubar = gtk_menu_bar_new();
     a.filemenu = gtk_menu_new();
-    GtkWidget *f = gtk_menu_item_new_with_label("File");
-    gtk_menu_item_set_submenu(GTK_MENU_ITEM(f), a.filemenu);
-    auto q = gtk_menu_item_new_with_label("Quit");
-    gtk_menu_shell_append(GTK_MENU_SHELL(a.filemenu), q);
-    gtk_menu_shell_append(GTK_MENU_SHELL(a.menubar), f);
+    GtkWidget *fmenu = gtk_menu_item_new_with_label("File");
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(fmenu), a.filemenu);
+    auto open = gtk_menu_item_new_with_label("Open");
+    auto quit = gtk_menu_item_new_with_label("Quit");
+    gtk_menu_shell_append(GTK_MENU_SHELL(a.filemenu), open);
+    g_signal_connect(open, "activate", G_CALLBACK(open_file), &a);
+    gtk_menu_shell_append(GTK_MENU_SHELL(a.filemenu), quit);
+    g_signal_connect(quit, "activate", G_CALLBACK(gtk_main_quit), NULL);
+    gtk_menu_shell_append(GTK_MENU_SHELL(a.menubar), fmenu);
     gtk_box_pack_start(GTK_BOX(a.box), a.menubar, FALSE, FALSE, 0);
 
     // Treeview.
@@ -64,12 +86,12 @@ app buildgui() {
     gtk_tree_store_set(a.treestore, &i, NAME_COLUMN, "Some filename", PACKED_SIZE_COLUMN, (int64_t)10, -1);
     gtk_box_pack_start(GTK_BOX(a.box), a.treeview, TRUE, TRUE, 0);
     gtk_container_add(GTK_CONTAINER(a.win), a.box);
-    return a;
 }
 
 int main(int argc, char **argv) {
     gtk_init(&argc, &argv);
-    app a = buildgui();
+    app a;
+    buildgui(a);
     gtk_widget_show_all(a.win);
     gtk_main();
     return 0;
