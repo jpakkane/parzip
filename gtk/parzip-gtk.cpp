@@ -17,6 +17,10 @@
 
 #include<gtk/gtk.h>
 
+#include<memory>
+
+#include"zipfile.h"
+
 struct app {
     GtkWidget *win;
     GtkWidget *box;
@@ -24,13 +28,28 @@ struct app {
     GtkWidget *menubar;
     GtkWidget *treeview;
     GtkTreeStore *treestore;
+    std::unique_ptr<ZipFile> zfile;
 };
 
 enum ViewColumns {
     NAME_COLUMN,
     PACKED_SIZE_COLUMN,
+    UNPACKED_SIZE_COLUMN,
     N_COLUMNS,
 };
+
+void reset_model(app *a) {
+    gtk_tree_store_clear(a->treestore);
+    for(const auto &e : a->zfile->localheaders()) {
+        GtkTreeIter i;
+        gtk_tree_store_append(a->treestore, &i, nullptr);
+        gtk_tree_store_set(a->treestore, &i,
+                NAME_COLUMN, e.fname.c_str(),
+                PACKED_SIZE_COLUMN, e.compressed_size,
+                UNPACKED_SIZE_COLUMN, e.uncompressed_size,
+                -1);
+    }
+}
 
 void open_file(GtkMenuItem *, gpointer data) {
     app *a = reinterpret_cast<app*>(data);
@@ -45,8 +64,9 @@ void open_file(GtkMenuItem *, gpointer data) {
     auto res = gtk_dialog_run(GTK_DIALOG(fc));
     if(res == GTK_RESPONSE_ACCEPT) {
         auto filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(fc));
-        printf("%s\n", filename);
+        a->zfile.reset(new ZipFile(filename));
         g_free(filename);
+        reset_model(a);
     }
     gtk_widget_destroy(fc);
 }
@@ -73,7 +93,7 @@ void buildgui(app &a) {
     gtk_box_pack_start(GTK_BOX(a.box), a.menubar, FALSE, FALSE, 0);
 
     // Treeview.
-    a.treestore = gtk_tree_store_new(N_COLUMNS, G_TYPE_STRING, G_TYPE_INT64);
+    a.treestore = gtk_tree_store_new(N_COLUMNS, G_TYPE_STRING, G_TYPE_INT64, G_TYPE_INT64);
     a.treeview = gtk_tree_view_new_with_model(GTK_TREE_MODEL(a.treestore));
     gtk_tree_view_append_column(GTK_TREE_VIEW(a.treeview),
             gtk_tree_view_column_new_with_attributes("Filename",
@@ -81,10 +101,12 @@ void buildgui(app &a) {
     gtk_tree_view_append_column(GTK_TREE_VIEW(a.treeview),
             gtk_tree_view_column_new_with_attributes("Packed size",
                     gtk_cell_renderer_text_new(), "text", PACKED_SIZE_COLUMN, nullptr));
-    GtkTreeIter i;
-    gtk_tree_store_append(a.treestore, &i, nullptr);
-    gtk_tree_store_set(a.treestore, &i, NAME_COLUMN, "Some filename", PACKED_SIZE_COLUMN, (int64_t)10, -1);
-    gtk_box_pack_start(GTK_BOX(a.box), a.treeview, TRUE, TRUE, 0);
+    gtk_tree_view_append_column(GTK_TREE_VIEW(a.treeview),
+            gtk_tree_view_column_new_with_attributes("Unpacked size",
+                    gtk_cell_renderer_text_new(), "text", UNPACKED_SIZE_COLUMN, nullptr));
+    GtkWidget *scroll = gtk_scrolled_window_new(nullptr, nullptr);
+    gtk_container_add(GTK_CONTAINER(scroll), a.treeview);
+    gtk_box_pack_start(GTK_BOX(a.box), scroll, TRUE, TRUE, 0);
     gtk_container_add(GTK_CONTAINER(a.win), a.box);
 }
 

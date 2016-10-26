@@ -16,6 +16,8 @@ gtkdep = dependency('gtk+-3.0', required : false)
 subdir('man')
 subdir('src')
 
+libinc = include_directories('src')
+
 if gtkdep.found()
   subdir('gtk')
 endif

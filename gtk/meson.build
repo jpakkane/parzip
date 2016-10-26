@@ -1,2 +1,4 @@
 executable('parzip-gtk', 'parzip-gtk.cpp',
-  dependencies : gtkdep)
+  include_directories : libinc,
+  link_with : zl,
+  dependencies : [gtkdep, threaddep])

@@ -34,6 +34,8 @@ public:
 
     TaskControl* unzip(int num_threads) const;
 
+    const std::vector<localheader> localheaders() const { return entries; }
+
 private:
 
     void run(int num_threads) const;
