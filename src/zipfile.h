@@ -24,6 +24,18 @@
 #include<vector>
 #include<thread>
 
+struct FileDisplayInfo {
+    std::string fname;
+    uint64_t compressed_size;
+    uint64_t uncompressed_size;
+};
+
+struct DirectoryDisplayInfo {
+    std::string dirname;
+    std::vector<DirectoryDisplayInfo> dirs;
+    std::vector<FileDisplayInfo> files;
+};
+
 class ZipFile {
 
 public:
@@ -35,6 +47,8 @@ public:
     TaskControl* unzip(int num_threads) const;
 
     const std::vector<localheader> localheaders() const { return entries; }
+
+    DirectoryDisplayInfo build_tree() const;
 
 private:
 

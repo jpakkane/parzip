@@ -322,3 +322,36 @@ void ZipFile::run(int num_threads) const {
     }
     tc.set_state(TASK_FINISHED);
 }
+
+DirectoryDisplayInfo ZipFile::build_tree() const {
+    DirectoryDisplayInfo root;
+    for(const auto &e : entries) {
+        DirectoryDisplayInfo *current = &root;
+        std::string fname = e.fname;
+        auto index = fname.find('/');
+        while(index != std::string::npos) {
+            std::string dirpart = fname.substr(0, index);
+            fname = fname.substr(index+1);
+            auto dir = std::find_if(current->dirs.begin(), current->dirs.end(),
+                    [&dirpart] (const DirectoryDisplayInfo &d) {return dirpart == d.dirname;});
+            if(dir != current->dirs.end()) {
+                current = &(*dir);
+            } else {
+                DirectoryDisplayInfo tmp;
+                tmp.dirname = dirpart;
+                current->dirs.emplace_back(std::move(tmp));
+                current = &current->dirs.back();
+            }
+            index = fname.find('/');
+        }
+        if(fname.empty()) {
+            // Zip files mark directory entries by ending them with a slash,
+            // don't create a file entry.
+            continue;
+        }
+        FileDisplayInfo tmp{fname, e.compressed_size, e.uncompressed_size};
+        current->files.emplace_back(std::move(tmp));
+    }
+    return root;
+}
+

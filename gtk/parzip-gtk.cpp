@@ -38,17 +38,32 @@ enum ViewColumns {
     N_COLUMNS,
 };
 
-void reset_model(app *a) {
-    gtk_tree_store_clear(a->treestore);
-    for(const auto &e : a->zfile->localheaders()) {
+void fill_recursively(app *a, const DirectoryDisplayInfo *di, GtkTreeIter *parent) {
+    for(const auto &d : di->dirs) {
         GtkTreeIter i;
-        gtk_tree_store_append(a->treestore, &i, nullptr);
+        gtk_tree_store_append(a->treestore, &i, parent);
         gtk_tree_store_set(a->treestore, &i,
-                NAME_COLUMN, e.fname.c_str(),
-                PACKED_SIZE_COLUMN, e.compressed_size,
-                UNPACKED_SIZE_COLUMN, e.uncompressed_size,
+                NAME_COLUMN, d.dirname.c_str(),
+                PACKED_SIZE_COLUMN, 0,
+                UNPACKED_SIZE_COLUMN, 0,
+                -1);
+        fill_recursively(a, &d, &i);
+    }
+    for(const auto &f : di->files) {
+        GtkTreeIter i;
+        gtk_tree_store_append(a->treestore, &i, parent);
+        gtk_tree_store_set(a->treestore, &i,
+                NAME_COLUMN, f.fname.c_str(),
+                PACKED_SIZE_COLUMN, f.compressed_size,
+                UNPACKED_SIZE_COLUMN, f.uncompressed_size,
                 -1);
     }
+}
+
+void reset_model(app *a) {
+    gtk_tree_store_clear(a->treestore);
+    auto ziptree = a->zfile->build_tree();
+    fill_recursively(a, &ziptree, nullptr);
 }
 
 void open_file(GtkMenuItem *, gpointer data) {
