@@ -19,6 +19,7 @@
 #include"utils.h"
 #include"fileutils.h"
 #include"mmapper.h"
+#include"naturalorder.h"
 #include<portable_endian.h>
 #ifdef _WIN32
 #include<winsock2.h>
@@ -198,6 +199,17 @@ void wait_for_slot(std::vector<std::future<UnpackResult>> &entries, const int nu
     }
 }
 
+void order_entries(DirectoryDisplayInfo &d) {
+    std::sort(d.dirs.begin(), d.dirs.end(), [](const DirectoryDisplayInfo &d1, const DirectoryDisplayInfo &d2) {
+        return natural_less(d1.dirname, d2.dirname);
+    });
+    std::sort(d.files.begin(), d.files.end(), [](const FileDisplayInfo &f1, const FileDisplayInfo &f2) {
+        return natural_less(f1.fname, f2.fname);
+    });
+    for(auto &de : d.dirs) {
+        order_entries(de);
+    }
+}
 
 }
 
@@ -323,6 +335,7 @@ void ZipFile::run(int num_threads) const {
     tc.set_state(TASK_FINISHED);
 }
 
+
 DirectoryDisplayInfo ZipFile::build_tree() const {
     DirectoryDisplayInfo root;
     for(const auto &e : entries) {
@@ -352,6 +365,7 @@ DirectoryDisplayInfo ZipFile::build_tree() const {
         FileDisplayInfo tmp{fname, e.compressed_size, e.uncompressed_size};
         current->files.emplace_back(std::move(tmp));
     }
+    order_entries(root);
     return root;
 }
 
