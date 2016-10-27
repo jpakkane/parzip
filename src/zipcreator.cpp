@@ -280,6 +280,11 @@ TaskControl* ZipCreator::create(const std::vector<fileinfo> &files, int num_thre
 }
 
 void ZipCreator::run(const std::vector<fileinfo> &files, int num_threads) {
+#ifdef __linux__
+    const bool use_lzma = true; // Temporary hack until lzma is fixed on OSX and Windows.
+#else
+    const bool use_lzma = false;
+#endif
     const int max_waiting_threads = 1000;
     File ofile(fname, "wb");
     endrecord ed;
@@ -313,7 +318,7 @@ void ZipCreator::run(const std::vector<fileinfo> &files, int num_threads) {
             count_states(futures, i, running, finished);
         }
         if(handle_inthread(f)) {
-            futures.emplace_back(std::async(std::launch::deferred, [&f] { return compress_entry(f); }));
+            futures.emplace_back(std::async(std::launch::deferred, [&f] { return compress_entry(f, use_lzma); }));
             futures.back().wait();
         } else {
             futures.emplace_back(std::async(std::launch::async, [&f] { const int max_name_size = 15; // 16 with \0
@@ -330,7 +335,7 @@ void ZipCreator::run(const std::vector<fileinfo> &files, int num_threads) {
 #else
                 pthread_setname_np(pthread_self(), thrname.c_str());
 #endif
-                return compress_entry(f);
+                return compress_entry(f, use_lzma);
             }));
         }
     }

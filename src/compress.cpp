@@ -74,6 +74,47 @@ bool is_compressible(const unsigned char *buf, const size_t bufsize) {
     return ((double)strm.total_out)/blocksize < required_ratio;
 }
 
+compressresult compress_zlib(const fileinfo &fi) {
+    const int CHUNK=1024*1024;
+    std::unique_ptr<unsigned char[]> out(new unsigned char [CHUNK]);
+    File infile(fi.fname, "rb");
+    MMapper buf = infile.mmap();
+    z_stream strm;
+    strm.zalloc = Z_NULL;
+    strm.zfree = Z_NULL;
+    strm.opaque = Z_NULL;
+    auto ret = deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -15, 8, Z_DEFAULT_STRATEGY);
+    if(ret != Z_OK) {
+        throw std::runtime_error("Zlib init failed.");
+    }
+    std::unique_ptr<z_stream, int(*)(z_stream*)> zcloser(&strm, deflateEnd);
+    FILE *f = tmpfile();
+    if(!f) {
+      throw_system("Could not create temp file: ");
+    }
+    compressresult result{File(f), FILE_ENTRY, CRC32(buf, buf.size()), ZIP_DEFLATE, fi};
+    strm.avail_in = buf.size();
+    strm.next_in = buf;
+
+    do {
+        strm.avail_out = CHUNK;
+        strm.next_out = out.get();
+        ret = deflate(&strm, Z_FINISH);    /* no bad return value */
+        assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
+        int write_size = CHUNK - strm.avail_out;
+        if (fwrite(out.get(), 1, write_size, result.f) != (unsigned int)write_size || ferror(result.f)) {
+            throw_system("Could not write to file:");
+        }
+    } while (strm.avail_out == 0);
+    assert(strm.avail_in == 0);     /* all input will be used */
+
+    /* done when last data in file processed */
+    assert(ret == Z_STREAM_END);        /* stream will be complete */
+
+    fflush(result.f);
+    return result;
+}
+
 #ifdef _WIN32
 compressresult compress_lzma(const fileinfo &fi) {
     throw std::runtime_error("Liblzma does not work with VS.");
@@ -203,16 +244,12 @@ compressresult create_symlink(const fileinfo &fi) {
 
 }
 
-compressresult compress_entry(const fileinfo &f) {
+compressresult compress_entry(const fileinfo &f, bool use_lzma) {
     if(S_ISREG(f.mode)) {
-#ifdef _WIN32
-        return store_file(f);
-#else
         if(f.fsize < TOO_SMALL_FOR_LZMA) {
             return store_file(f);
         }
-        return compress_lzma(f);
-#endif
+        return use_lzma ? compress_lzma(f) : compress_zlib(f);
     }
     if(S_ISDIR(f.mode)) {
         return create_dir(f);

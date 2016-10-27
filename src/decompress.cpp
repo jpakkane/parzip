@@ -109,7 +109,6 @@ uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FI
                 throw_system("Could not write to file:");
             }
         } while (strm.avail_out == 0);
-        current += CHUNK;
         /* done when inflate() says it's done */
     } while (ret != Z_STREAM_END);
 /*
