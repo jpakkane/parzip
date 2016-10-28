@@ -109,7 +109,24 @@ void unpack_current(GtkMenuItem *, gpointer data) {
     if(!a->zfile) {
         return;
     }
-
+    GtkWidget *dc = gtk_file_chooser_dialog_new("Output directory",
+            GTK_WINDOW(a->win),
+            GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
+            "_Cancel",
+            GTK_RESPONSE_CANCEL,
+            "_Open",
+            GTK_RESPONSE_ACCEPT,
+            nullptr);
+    auto res = gtk_dialog_run(GTK_DIALOG(dc));
+    if(res == GTK_RESPONSE_ACCEPT) {
+        char *dirname = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dc));
+        gtk_widget_destroy(dc);
+        unpack_dir = dirname;
+        g_free(dirname);
+    } else {
+        gtk_widget_destroy(dc);
+        return;
+    }
     a->tc.reset(a->zfile->unzip(unpack_dir, num_threads));
     gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(a->unpack_progress), 0);
     gtk_widget_show_all(a->unpack_dialog);
