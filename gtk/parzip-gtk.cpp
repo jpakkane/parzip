@@ -31,7 +31,7 @@ struct app {
     GtkWidget *unpack_progress;
     GtkTreeStore *treestore;
     std::unique_ptr<ZipFile> zfile;
-    std::unique_ptr<TaskControl> tc;
+    TaskControl *tc;
 };
 
 enum ViewColumns {
@@ -127,7 +127,7 @@ void unpack_current(GtkMenuItem *, gpointer data) {
         gtk_widget_destroy(dc);
         return;
     }
-    a->tc.reset(a->zfile->unzip(unpack_dir, num_threads));
+    a->tc = a->zfile->unzip(unpack_dir, num_threads);
     gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(a->unpack_progress), 0);
     gtk_widget_show_all(a->unpack_dialog);
     g_timeout_add(500, unpack_timeout_func, data);
