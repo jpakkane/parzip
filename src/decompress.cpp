@@ -303,13 +303,23 @@ void set_unix_permissions(const localheader &lh, const centralheader &ch, const 
 
 }
 
-UnpackResult unpack_entry(const localheader &lh,
+UnpackResult unpack_entry(const std::string &prefix, const localheader &lh,
         const centralheader &ch,
         const unsigned char *data_start, uint64_t data_size) {
     try {
-        do_unpack(lh, ch, data_start, data_size, lh.fname);
+        std::string ofname;
+        if(prefix.empty()) {
+            ofname = lh.fname;
+        } else {
+            if(prefix.back() != '/') {
+                ofname = prefix + '/' + lh.fname;
+            } else {
+                ofname = prefix + lh.fname;
+            }
+        }
+        do_unpack(lh, ch, data_start, data_size, ofname);
         if(ch.version_made_by>>8 == MADE_BY_UNIX) {
-            set_unix_permissions(lh, ch, lh.fname);
+            set_unix_permissions(lh, ch, ofname);
         }
         return UnpackResult{true, "OK: " + lh.fname};
     } catch(const std::exception &e) {

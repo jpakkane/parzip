@@ -285,7 +285,7 @@ void ZipFile::readCentralDirectory() {
     }
 }
 
-TaskControl* ZipFile::unzip(int num_threads) const {
+TaskControl* ZipFile::unzip(const std::string &prefix, int num_threads) const {
     if(tc.state() != TASK_NOT_STARTED) {
         throw std::logic_error("Tried to start an already used packing process.");
     }
@@ -296,19 +296,19 @@ TaskControl* ZipFile::unzip(int num_threads) const {
 
     tc.reserve(entries.size());
     tc.set_state(TASK_RUNNING);
-    t.reset(new std::thread([this](int num_threads) {
+    t.reset(new std::thread([this](const std::string &prefix, int num_threads) {
         try {
-            this->run(num_threads);
+            this->run(prefix, num_threads);
         } catch(const std::exception &e) {
             printf("Fail: %s\n", e.what());
         } catch(...) {
             printf("Unknown fail.\n");
         }
-    }, num_threads));
+    }, prefix, num_threads));
     return &tc;
 }
 
-void ZipFile::run(int num_threads) const {
+void ZipFile::run(const std::string &prefix, int num_threads) const {
     MMapper map(zipfile);
 
     unsigned char *file_start = map;
@@ -316,12 +316,12 @@ void ZipFile::run(int num_threads) const {
     futures.reserve(num_threads);
     for(size_t i=0; i<entries.size(); i++) {
         wait_for_slot(futures, num_threads, tc);
-        auto unstoretask = [this, file_start, i](){
-                return unpack_entry(entries[i],
-                        centrals[i],
-                        file_start + data_offsets[i],
-                        entries[i].compressed_size);
-                };
+        auto unstoretask = [this, file_start, i, &prefix](){
+            return unpack_entry(prefix, entries[i],
+                    centrals[i],
+                    file_start + data_offsets[i],
+                    entries[i].compressed_size);
+        };
         futures.emplace_back(std::async(std::launch::async, unstoretask));
     }
     for(auto &f : futures) {

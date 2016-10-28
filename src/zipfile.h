@@ -44,7 +44,7 @@ public:
 
     size_t size() const { return entries.size(); }
 
-    TaskControl* unzip(int num_threads) const;
+    TaskControl* unzip(const std::string &prefix, int num_threads) const;
 
     const std::vector<localheader> localheaders() const { return entries; }
 
@@ -52,7 +52,7 @@ public:
 
 private:
 
-    void run(int num_threads) const;
+    void run(const std::string &prefix, int num_threads) const;
 
     void readLocalFileHeaders();
     void readCentralDirectory();

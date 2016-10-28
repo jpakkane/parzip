@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
     try {
         size_t i = 0;
         ZipFile f(argv[1]);
-        TaskControl *tc = f.unzip(num_threads);
+        TaskControl *tc = f.unzip("", num_threads);
         size_t total_tasks = tc->total();
         while(i<total_tasks) {
             if(i>=tc->finished()) {
