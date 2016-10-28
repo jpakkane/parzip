@@ -27,8 +27,11 @@ struct app {
     GtkWidget *filemenu;
     GtkWidget *menubar;
     GtkWidget *treeview;
+    GtkWidget *unpack_dialog;
+    GtkWidget *unpack_progress;
     GtkTreeStore *treestore;
     std::unique_ptr<ZipFile> zfile;
+    std::unique_ptr<TaskControl> tc;
 };
 
 enum ViewColumns {
@@ -86,6 +89,34 @@ void open_file(GtkMenuItem *, gpointer data) {
     gtk_widget_destroy(fc);
 }
 
+gboolean unpack_timeout_func(gpointer data) {
+    app *a = reinterpret_cast<app*>(data);
+    auto finished = a->tc->finished();
+    auto total = a->tc->total();
+    if(finished == (size_t)total) {
+        return FALSE;
+    }
+    double fraction = ((double) finished) / total;
+    gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(a->unpack_progress), fraction);
+    gtk_widget_hide(a->unpack_dialog);
+    return TRUE;
+}
+
+void unpack_current(GtkMenuItem *, gpointer data) {
+    app *a = reinterpret_cast<app*>(data);
+    std::string unpack_dir;
+    int num_threads = 1;
+    if(!a->zfile) {
+        return;
+    }
+
+    a->tc.reset(a->zfile->unzip(unpack_dir, num_threads));
+    gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(a->unpack_progress), 0);
+    gtk_widget_show_all(a->unpack_dialog);
+    g_timeout_add(500, unpack_timeout_func, data);
+}
+
+
 void buildgui(app &a) {
     a.win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(a.win), "Parzip");
@@ -99,9 +130,12 @@ void buildgui(app &a) {
     GtkWidget *fmenu = gtk_menu_item_new_with_label("File");
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(fmenu), a.filemenu);
     auto open = gtk_menu_item_new_with_label("Open");
+    auto unpack = gtk_menu_item_new_with_label("Unpack");
     auto quit = gtk_menu_item_new_with_label("Quit");
     gtk_menu_shell_append(GTK_MENU_SHELL(a.filemenu), open);
     g_signal_connect(open, "activate", G_CALLBACK(open_file), &a);
+    gtk_menu_shell_append(GTK_MENU_SHELL(a.filemenu), unpack);
+    g_signal_connect(unpack, "activate", G_CALLBACK(unpack_current), &a);
     gtk_menu_shell_append(GTK_MENU_SHELL(a.filemenu), quit);
     g_signal_connect(quit, "activate", G_CALLBACK(gtk_main_quit), NULL);
     gtk_menu_shell_append(GTK_MENU_SHELL(a.menubar), fmenu);
@@ -123,6 +157,18 @@ void buildgui(app &a) {
     gtk_container_add(GTK_CONTAINER(scroll), a.treeview);
     gtk_box_pack_start(GTK_BOX(a.box), scroll, TRUE, TRUE, 0);
     gtk_container_add(GTK_CONTAINER(a.win), a.box);
+
+    // Unpack progress bar dialog.
+    a.unpack_progress = gtk_progress_bar_new();
+
+    a.unpack_dialog = gtk_dialog_new_with_buttons("Unpacking file",
+            GTK_WINDOW(a.win),
+            GTK_DIALOG_MODAL,
+            "Cancel",
+            GTK_RESPONSE_REJECT,
+            nullptr);
+    gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(a.unpack_dialog))),
+            a.unpack_progress, TRUE, TRUE, 0);
 }
 
 int main(int argc, char **argv) {

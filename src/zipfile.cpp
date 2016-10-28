@@ -38,6 +38,10 @@
 #include<algorithm>
 #include "decompress.h"
 
+#ifndef _WIN32
+using std::max;
+#endif
+
 namespace {
 
 void unpack_zip64_sizes(const std::string &extra_field, uint64_t &compressed_size, uint64_t &uncompressed_size) {
@@ -286,6 +290,9 @@ void ZipFile::readCentralDirectory() {
 }
 
 TaskControl* ZipFile::unzip(const std::string &prefix, int num_threads) const {
+    if(num_threads < 0) {
+        num_threads = max((int)std::thread::hardware_concurrency(), 1);
+    }
     if(tc.state() != TASK_NOT_STARTED) {
         throw std::logic_error("Tried to start an already used packing process.");
     }
@@ -296,7 +303,7 @@ TaskControl* ZipFile::unzip(const std::string &prefix, int num_threads) const {
 
     tc.reserve(entries.size());
     tc.set_state(TASK_RUNNING);
-    t.reset(new std::thread([this](const std::string &prefix, int num_threads) {
+    t.reset(new std::thread([this](const std::string prefix, int num_threads) {
         try {
             this->run(prefix, num_threads);
         } catch(const std::exception &e) {

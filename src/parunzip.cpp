@@ -25,12 +25,8 @@
 
 #include"zipfile.h"
 
-#ifndef _WIN32
-using std::max;
-#endif
-
 int main(int argc, char **argv) {
-    const int num_threads = max((int)std::thread::hardware_concurrency(), 1);
+    const int num_threads = -1;
     if(argc != 2 ) {
         printf("%s <zip file>\n", argv[0]);
         return 1;
