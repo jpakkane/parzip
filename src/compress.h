@@ -31,4 +31,4 @@ struct compressresult {
     fileinfo fi;
 };
 
-compressresult compress_entry(const fileinfo &f, bool use_lzma, TaskControl &tc);
+compressresult compress_entry(const fileinfo &f, bool use_lzma, const TaskControl &tc);

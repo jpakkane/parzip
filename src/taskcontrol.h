@@ -44,8 +44,8 @@ public:
     std::string entry(size_t i) const;
 
     void stop();
-    bool should_stop();
-    void throw_if_stopped();
+    bool should_stop() const;
+    void throw_if_stopped() const;
 
 private:
     mutable std::mutex m;

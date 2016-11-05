@@ -75,7 +75,7 @@ bool is_compressible(const unsigned char *buf, const size_t bufsize) {
     return ((double)strm.total_out)/blocksize < required_ratio;
 }
 
-compressresult compress_zlib(const fileinfo &fi, TaskControl &tc) {
+compressresult compress_zlib(const fileinfo &fi, const TaskControl &tc) {
     const int CHUNK=1024*1024;
     std::unique_ptr<unsigned char[]> out(new unsigned char [CHUNK]);
     File infile(fi.fname, "rb");
@@ -124,7 +124,7 @@ compressresult compress_lzma(const fileinfo &fi) {
 
 #else
 
-compressresult compress_lzma(const fileinfo &fi, TaskControl &tc) {
+compressresult compress_lzma(const fileinfo &fi, const TaskControl &tc) {
     const int CHUNK=1024*1024;
     File infile(fi.fname, "rb");
     MMapper buf = infile.mmap();
@@ -247,7 +247,7 @@ compressresult create_symlink(const fileinfo &fi) {
 
 }
 
-compressresult compress_entry(const fileinfo &f, bool use_lzma, TaskControl &tc) {
+compressresult compress_entry(const fileinfo &f, bool use_lzma, const TaskControl &tc) {
     if(S_ISREG(f.mode)) {
         if(f.fsize < TOO_SMALL_FOR_LZMA) {
             return store_file(f);

@@ -55,9 +55,9 @@
 
 namespace {
 
-uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile, TaskControl &tc);
-uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile, TaskControl &tc);
-uint32_t unstore_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile, TaskControl &tc);
+uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile, const TaskControl &tc);
+uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile, const TaskControl &tc);
+uint32_t unstore_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile, const TaskControl &tc);
 
 /* Decompress from file source to file dest until stream ends or EOF.
    inf() returns Z_OK on success, Z_MEM_ERROR if memory could not be
@@ -68,7 +68,7 @@ uint32_t unstore_to_file(const unsigned char *data_start, uint64_t data_size, FI
 uint32_t inflate_to_file(const unsigned char *data_start,
                          uint64_t data_size,
                          FILE *ofile,
-                         TaskControl &tc) {
+                         const TaskControl &tc) {
     uint32_t crcvalue = crc32(0, Z_NULL, 0);
     int ret;
     unsigned have;
@@ -133,7 +133,7 @@ uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE 
 uint32_t lzma_to_file(const unsigned char *data_start,
                       uint64_t data_size,
                       FILE *ofile,
-                      TaskControl &tc) {
+                      const TaskControl &tc) {
     uint32_t crcvalue = crc32(0, Z_NULL, 0);
     std::unique_ptr<unsigned char[]> out(new unsigned char [CHUNK]);
     lzma_stream strm = LZMA_STREAM_INIT;
@@ -187,7 +187,7 @@ uint32_t lzma_to_file(const unsigned char *data_start,
 uint32_t unstore_to_file(const unsigned char *data_start,
                          uint64_t data_size,
                          FILE *ofile,
-                         TaskControl &tc) {
+                         const TaskControl &tc) {
     tc.throw_if_stopped();
     auto bytes_written = fwrite(data_start, 1, data_size, ofile);
     if(bytes_written != data_size) {
@@ -210,7 +210,7 @@ void create_file(const localheader &lh,
                  const unsigned char *data_start,
                  uint64_t data_size,
                  const std::string &outname,
-                 TaskControl &tc) {
+                 const TaskControl &tc) {
     decltype(unstore_to_file) *f;
     if(ch.compression_method == ZIP_NO_COMPRESSION) {
         f = unstore_to_file;
@@ -295,7 +295,7 @@ void do_unpack(const localheader &lh,
                const unsigned char *data_start,
                uint64_t data_size,
                const std::string &outname,
-               TaskControl &tc) {
+               const TaskControl &tc) {
     switch(detect_filetype(lh, ch)) {
     case DIRECTORY_ENTRY : mkdirp(outname); break;
     case SYMLINK_ENTRY : create_symlink(data_start, data_size, outname); break;
@@ -330,7 +330,7 @@ UnpackResult unpack_entry(const std::string &prefix, const localheader &lh,
         const centralheader &ch,
         const unsigned char *data_start,
         uint64_t data_size,
-        TaskControl &tc) {
+        const TaskControl &tc) {
     try {
         std::string ofname;
         if(prefix.empty()) {

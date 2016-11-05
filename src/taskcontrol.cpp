@@ -86,12 +86,12 @@ void TaskControl::stop() {
     stopped = true;
 }
 
-bool TaskControl::should_stop() {
+bool TaskControl::should_stop() const {
     std::lock_guard<std::mutex> l(m);
     return stopped;
 }
 
-void TaskControl::throw_if_stopped() {
+void TaskControl::throw_if_stopped() const {
     std::lock_guard<std::mutex> l(m);
     if(stopped) {
         throw std::runtime_error("Stopping task evaluation.");

@@ -32,4 +32,4 @@ UnpackResult unpack_entry(const std::string &prefix,
         const centralheader &ch,
         const unsigned char *data_start,
         uint64_t data_size,
-        TaskControl &tc);
+        const TaskControl &tc);
