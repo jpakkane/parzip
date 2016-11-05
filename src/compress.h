@@ -21,6 +21,7 @@
 #include"file.h"
 #include<string>
 
+class TaskControl;
 
 struct compressresult {
     File f;
@@ -30,4 +31,4 @@ struct compressresult {
     fileinfo fi;
 };
 
-compressresult compress_entry(const fileinfo &f, bool use_lzma);
+compressresult compress_entry(const fileinfo &f, bool use_lzma, TaskControl &tc);

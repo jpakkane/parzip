@@ -310,6 +310,9 @@ void ZipCreator::run(const std::vector<fileinfo> &files, int num_threads) {
             std::this_thread::yield();
             count_states(futures, i, running, finished);
         } while(running >= num_threads);
+        if(tc.should_stop()) {
+            break;
+        }
         // If we exhaust the maximum number of results waiting to be written we must wait
         // until resources become available. This means not pegging cpus to the max
         // but there does not seem to be a way to easily work around this.
@@ -318,10 +321,10 @@ void ZipCreator::run(const std::vector<fileinfo> &files, int num_threads) {
             count_states(futures, i, running, finished);
         }
         if(handle_inthread(f)) {
-            futures.emplace_back(std::async(std::launch::deferred, [&f] { return compress_entry(f, use_lzma); }));
+            futures.emplace_back(std::async(std::launch::deferred, [this, &f] { return compress_entry(f, use_lzma, tc); }));
             futures.back().wait();
         } else {
-            futures.emplace_back(std::async(std::launch::async, [&f] { const int max_name_size = 15; // 16 with \0
+            futures.emplace_back(std::async(std::launch::async, [this, &f] { const int max_name_size = 15; // 16 with \0
                 std::string thrname;
                 thrname.reserve(max_name_size);
                 if(f.fname.length() < max_name_size-2) {
@@ -335,7 +338,7 @@ void ZipCreator::run(const std::vector<fileinfo> &files, int num_threads) {
 #else
                 pthread_setname_np(pthread_self(), thrname.c_str());
 #endif
-                return compress_entry(f, use_lzma);
+                return compress_entry(f, use_lzma, tc);
             }));
         }
     }
@@ -345,38 +348,40 @@ void ZipCreator::run(const std::vector<fileinfo> &files, int num_threads) {
     if(chs.empty()) {
         throw std::runtime_error("All files failed to compress.");
     }
-    uint64_t ch_offset = ofile.tell();
-    for(const auto &ch : chs) {
-        write_central_header(ofile, ch);
+    if(!tc.should_stop()) {
+        uint64_t ch_offset = ofile.tell();
+        for(const auto &ch : chs) {
+            write_central_header(ofile, ch);
+        }
+        uint64_t ch_end_offset = ofile.tell();
+
+        // ZIP64 eod record
+        zip64endrecord z64r;
+        z64r.recordsize = 2 + 2 + 4 + 4 + 8 + 8 + 8 + 8;
+        z64r.version_made_by = chs[0].version_made_by;
+        z64r.version_needed = NEEDED_VERSION;
+        z64r.disk_number = 0;
+        z64r.dir_start_disk_number = 0;
+        z64r.this_disk_num_entries = chs.size();
+        z64r.total_entries = chs.size();
+        z64r.dir_size = ch_end_offset - ch_offset;
+        z64r.dir_offset = ch_offset;
+        write_z64_eod_record(ofile, z64r);
+
+        // ZIP64 eod locator
+        zip64locator z64l;
+        z64l.central_dir_disk_number = 0;
+        z64l.central_dir_offset = ch_end_offset;
+        z64l.num_disks = 1;
+        write_z64_eod_locator(ofile, z64l);
+
+        ed.disk_number = 0;
+        ed.central_dir_disk_number = 0;
+        ed.this_disk_num_entries = 0xFFFF;
+        ed.total_entries = 0XFFFF;
+        ed.dir_size = 0xFFFFFFFF;
+        ed.dir_offset_start_disk = 0xFFFFFFFF;
+        write_end_record(ofile, ed);
     }
-    uint64_t ch_end_offset = ofile.tell();
-
-    // ZIP64 eod record
-    zip64endrecord z64r;
-    z64r.recordsize = 2 + 2 + 4 + 4 + 8 + 8 + 8 + 8;
-    z64r.version_made_by = chs[0].version_made_by;
-    z64r.version_needed = NEEDED_VERSION;
-    z64r.disk_number = 0;
-    z64r.dir_start_disk_number = 0;
-    z64r.this_disk_num_entries = chs.size();
-    z64r.total_entries = chs.size();
-    z64r.dir_size = ch_end_offset - ch_offset;
-    z64r.dir_offset = ch_offset;
-    write_z64_eod_record(ofile, z64r);
-
-    // ZIP64 eod locator
-    zip64locator z64l;
-    z64l.central_dir_disk_number = 0;
-    z64l.central_dir_offset = ch_end_offset;
-    z64l.num_disks = 1;
-    write_z64_eod_locator(ofile, z64l);
-
-    ed.disk_number = 0;
-    ed.central_dir_disk_number = 0;
-    ed.this_disk_num_entries = 0xFFFF;
-    ed.total_entries = 0XFFFF;
-    ed.dir_size = 0xFFFFFFFF;
-    ed.dir_offset_start_disk = 0xFFFFFFFF;
-    write_end_record(ofile, ed);
     tc.set_state(TASK_FINISHED);
 }

@@ -20,6 +20,7 @@
 #include"utils.h"
 #include"fileutils.h"
 #include"mmapper.h"
+#include"taskcontrol.h"
 
 #include<sys/stat.h>
 #ifdef _WIN32
@@ -74,7 +75,7 @@ bool is_compressible(const unsigned char *buf, const size_t bufsize) {
     return ((double)strm.total_out)/blocksize < required_ratio;
 }
 
-compressresult compress_zlib(const fileinfo &fi) {
+compressresult compress_zlib(const fileinfo &fi, TaskControl &tc) {
     const int CHUNK=1024*1024;
     std::unique_ptr<unsigned char[]> out(new unsigned char [CHUNK]);
     File infile(fi.fname, "rb");
@@ -97,6 +98,7 @@ compressresult compress_zlib(const fileinfo &fi) {
     strm.next_in = buf;
 
     do {
+        tc.throw_if_stopped();
         strm.avail_out = CHUNK;
         strm.next_out = out.get();
         ret = deflate(&strm, Z_FINISH);    /* no bad return value */
@@ -122,7 +124,7 @@ compressresult compress_lzma(const fileinfo &fi) {
 
 #else
 
-compressresult compress_lzma(const fileinfo &fi) {
+compressresult compress_lzma(const fileinfo &fi, TaskControl &tc) {
     const int CHUNK=1024*1024;
     File infile(fi.fname, "rb");
     MMapper buf = infile.mmap();
@@ -169,6 +171,7 @@ compressresult compress_lzma(const fileinfo &fi) {
     /* compress until data ends */
     lzma_action action = LZMA_RUN;
     while(true) {
+        tc.throw_if_stopped();
         if(strm.total_in >= buf.size()) {
             action = LZMA_FINISH;
         } else {
@@ -244,12 +247,12 @@ compressresult create_symlink(const fileinfo &fi) {
 
 }
 
-compressresult compress_entry(const fileinfo &f, bool use_lzma) {
+compressresult compress_entry(const fileinfo &f, bool use_lzma, TaskControl &tc) {
     if(S_ISREG(f.mode)) {
         if(f.fsize < TOO_SMALL_FOR_LZMA) {
             return store_file(f);
         }
-        return use_lzma ? compress_lzma(f) : compress_zlib(f);
+        return use_lzma ? compress_lzma(f, tc) : compress_zlib(f, tc);
     }
     if(S_ISDIR(f.mode)) {
         return create_dir(f);
