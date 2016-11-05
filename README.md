@@ -14,7 +14,7 @@ Licensed under GPLv3 or later.
  - both zipping and unzipping
  - multithreading
  - uncompressed (i.e. stored) files
- - [deflate](http:zlib.net) and [lzma](http://7-zip.org/sdk.html) decompression and decompression
+ - [deflate](http:zlib.net) and [lzma](http://7-zip.org/sdk.html) compression and decompression
  - ZIP64 extensions (i.e. >4 GB files)
  - unix file attributes
 
