@@ -44,7 +44,8 @@ public:
     std::string entry(size_t i) const;
 
     void stop();
-    void check_for_stopping(); // throws a stopping exception
+    bool should_stop();
+    void throw_if_stopped();
 
 private:
     mutable std::mutex m;
@@ -53,5 +54,5 @@ private:
     int num_success;
     int num_failures;
     int total_tasks;
-    bool should_stop = false;
+    bool stopped = false;
 };

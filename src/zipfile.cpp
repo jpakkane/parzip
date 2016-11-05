@@ -182,7 +182,9 @@ endrecord read_end_record(File &f) {
     return el;
 }
 
-void wait_for_slot(std::vector<std::future<UnpackResult>> &entries, const int num_threads, TaskControl &tc) {
+void wait_for_slot(std::vector<std::future<UnpackResult>> &entries,
+                   const int num_threads,
+                   TaskControl &tc) {
     if((int)entries.size() < num_threads)
         return;
     while(true) {
@@ -197,6 +199,9 @@ void wait_for_slot(std::vector<std::future<UnpackResult>> &entries, const int nu
                 tc.add_failure(r.msg);
             }
             entries.erase(finished);
+            return;
+        }
+        if(tc.should_stop()) {
             return;
         }
         std::this_thread::yield();
@@ -323,6 +328,9 @@ void ZipFile::run(const std::string &prefix, int num_threads) const {
     futures.reserve(num_threads);
     for(size_t i=0; i<entries.size(); i++) {
         wait_for_slot(futures, num_threads, tc);
+        if(tc.should_stop()) {
+            break;
+        }
         auto unstoretask = [this, file_start, i, &prefix](){
             return unpack_entry(prefix, entries[i],
                                 centrals[i],

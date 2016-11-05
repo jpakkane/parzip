@@ -97,7 +97,7 @@ uint32_t inflate_to_file(const unsigned char *data_start,
 
         /* run inflate() on input until output buffer not full */
         do {
-            tc.check_for_stopping();
+            tc.throw_if_stopped();
             strm.avail_out = CHUNK;
             strm.next_out = out.get();
             ret = inflate(&strm, Z_NO_FLUSH);
@@ -162,7 +162,7 @@ uint32_t lzma_to_file(const unsigned char *data_start,
     strm.next_in = current;
     /* decompress until data ends */
     do {
-        tc.check_for_stopping();
+        tc.throw_if_stopped();
         if (strm.total_in == data_size - offset)
             break;
 
@@ -188,7 +188,7 @@ uint32_t unstore_to_file(const unsigned char *data_start,
                          uint64_t data_size,
                          FILE *ofile,
                          TaskControl &tc) {
-    tc.check_for_stopping();
+    tc.throw_if_stopped();
     auto bytes_written = fwrite(data_start, 1, data_size, ofile);
     if(bytes_written != data_size) {
         throw_system("Could not write file fully:");
