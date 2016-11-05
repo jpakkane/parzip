@@ -97,10 +97,10 @@ uint32_t inflate_to_file(const unsigned char *data_start,
 
         /* run inflate() on input until output buffer not full */
         do {
-            tc.throw_if_stopped();
             strm.avail_out = CHUNK;
             strm.next_out = out.get();
             ret = inflate(&strm, Z_NO_FLUSH);
+            tc.throw_if_stopped();
             assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
             switch (ret) {
             case Z_NEED_DICT:
@@ -162,7 +162,6 @@ uint32_t lzma_to_file(const unsigned char *data_start,
     strm.next_in = current;
     /* decompress until data ends */
     do {
-        tc.throw_if_stopped();
         if (strm.total_in == data_size - offset)
             break;
 
@@ -170,6 +169,7 @@ uint32_t lzma_to_file(const unsigned char *data_start,
             strm.avail_out = CHUNK;
             strm.next_out = out.get();
             ret = lzma_code(&strm, LZMA_RUN);
+            tc.throw_if_stopped();
             if(ret != LZMA_OK && ret != LZMA_STREAM_END) {
                 throw std::runtime_error("Decompression failed.");
             }

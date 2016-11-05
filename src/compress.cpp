@@ -98,10 +98,10 @@ compressresult compress_zlib(const fileinfo &fi, const TaskControl &tc) {
     strm.next_in = buf;
 
     do {
-        tc.throw_if_stopped();
         strm.avail_out = CHUNK;
         strm.next_out = out.get();
         ret = deflate(&strm, Z_FINISH);    /* no bad return value */
+        tc.throw_if_stopped();
         assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
         int write_size = CHUNK - strm.avail_out;
         if (fwrite(out.get(), 1, write_size, result.f) != (unsigned int)write_size || ferror(result.f)) {
@@ -171,7 +171,6 @@ compressresult compress_lzma(const fileinfo &fi, const TaskControl &tc) {
     /* compress until data ends */
     lzma_action action = LZMA_RUN;
     while(true) {
-        tc.throw_if_stopped();
         if(strm.total_in >= buf.size()) {
             action = LZMA_FINISH;
         } else {
@@ -179,6 +178,7 @@ compressresult compress_lzma(const fileinfo &fi, const TaskControl &tc) {
             strm.next_out = out.get();
         }
         ret = lzma_code(&strm, action);
+        tc.throw_if_stopped();
         if(strm.avail_out == 0 || ret == LZMA_STREAM_END) {
             size_t write_size = CHUNK - strm.avail_out;
             if (fwrite(out.get(), 1, write_size, result.f) != write_size || ferror(result.f)) {

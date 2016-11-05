@@ -93,19 +93,19 @@ gboolean unpack_timeout_func(gpointer data) {
     app *a = reinterpret_cast<app*>(data);
     auto finished = a->tc->finished();
     auto total = a->tc->total();
-    if(finished == (size_t)total) {
+    if(a->tc->state() != TASK_RUNNING) {
+        gtk_widget_hide(a->unpack_dialog);
         return FALSE;
     }
     double fraction = ((double) finished) / total;
     gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(a->unpack_progress), fraction);
-    gtk_widget_hide(a->unpack_dialog);
     return TRUE;
 }
 
 void unpack_current(GtkMenuItem *, gpointer data) {
     app *a = reinterpret_cast<app*>(data);
     std::string unpack_dir;
-    int num_threads = 1;
+    int num_threads = std::max((int)std::thread::hardware_concurrency(), 1);
     if(!a->zfile) {
         return;
     }
@@ -131,6 +131,11 @@ void unpack_current(GtkMenuItem *, gpointer data) {
     gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(a->unpack_progress), 0);
     gtk_widget_show_all(a->unpack_dialog);
     g_timeout_add(500, unpack_timeout_func, data);
+}
+
+void stop_unpack(GtkDialog *, gint, gpointer data) {
+    app *a = reinterpret_cast<app*>(data);
+    a->tc->stop();
 }
 
 
@@ -178,12 +183,13 @@ void buildgui(app &a) {
     // Unpack progress bar dialog.
     a.unpack_progress = gtk_progress_bar_new();
 
-    a.unpack_dialog = gtk_dialog_new_with_buttons("Unpacking file",
+    a.unpack_dialog = gtk_dialog_new_with_buttons("Unpacking Zip file",
             GTK_WINDOW(a.win),
             GTK_DIALOG_MODAL,
             "Cancel",
             GTK_RESPONSE_REJECT,
             nullptr);
+    g_signal_connect(a.unpack_dialog, "response", G_CALLBACK(stop_unpack), &a);
     gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(a.unpack_dialog))),
             a.unpack_progress, TRUE, TRUE, 0);
 }
