@@ -43,6 +43,9 @@ public:
     size_t finished() const;
     std::string entry(size_t i) const;
 
+    void stop();
+    void check_for_stopping(); // throws a stopping exception
+
 private:
     mutable std::mutex m;
     TaskState cur_state;
@@ -50,4 +53,5 @@ private:
     int num_success;
     int num_failures;
     int total_tasks;
+    bool should_stop = false;
 };

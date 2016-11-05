@@ -325,9 +325,10 @@ void ZipFile::run(const std::string &prefix, int num_threads) const {
         wait_for_slot(futures, num_threads, tc);
         auto unstoretask = [this, file_start, i, &prefix](){
             return unpack_entry(prefix, entries[i],
-                    centrals[i],
-                    file_start + data_offsets[i],
-                    entries[i].compressed_size);
+                                centrals[i],
+                                file_start + data_offsets[i],
+                                entries[i].compressed_size,
+                                tc);
         };
         futures.emplace_back(std::async(std::launch::async, unstoretask));
     }

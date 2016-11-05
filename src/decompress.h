@@ -20,6 +20,8 @@
 #include"zipdefs.h"
 #include<string>
 
+class TaskControl;
+
 struct UnpackResult {
     bool success;
     std::string msg;
@@ -28,4 +30,6 @@ struct UnpackResult {
 UnpackResult unpack_entry(const std::string &prefix,
         const localheader &lh,
         const centralheader &ch,
-        const unsigned char *data_start, uint64_t data_size);
+        const unsigned char *data_start,
+        uint64_t data_size,
+        TaskControl &tc);

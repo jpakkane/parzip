@@ -80,3 +80,15 @@ void TaskControl::add_failure(const std::string &msg) {
     results.push_back(msg);
     num_failures++;
 }
+
+void TaskControl::stop() {
+    std::lock_guard<std::mutex> l(m);
+    should_stop = true;
+}
+
+void TaskControl::check_for_stopping() {
+    std::lock_guard<std::mutex> l(m);
+    if(should_stop) {
+        throw std::runtime_error("Stopping task evaluation.");
+    }
+}

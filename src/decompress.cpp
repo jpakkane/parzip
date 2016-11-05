@@ -28,8 +28,9 @@
 #include"utils.h"
 #include"fileutils.h"
 #include"file.h"
+#include"taskcontrol.h"
 
-#include<portable_endian.h>
+#include"portable_endian.h"
 #include<zlib.h>
 
 #ifdef _WIN32
@@ -54,9 +55,9 @@
 
 namespace {
 
-uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile);
-uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile);
-uint32_t unstore_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile);
+uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile, TaskControl &tc);
+uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile, TaskControl &tc);
+uint32_t unstore_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile, TaskControl &tc);
 
 /* Decompress from file source to file dest until stream ends or EOF.
    inf() returns Z_OK on success, Z_MEM_ERROR if memory could not be
@@ -64,7 +65,10 @@ uint32_t unstore_to_file(const unsigned char *data_start, uint64_t data_size, FI
    invalid or incomplete, Z_VERSION_ERROR if the version of zlib.h and
    the version of the library linked do not match, or Z_ERRNO if there
    is an error reading or writing the files. */
-uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile) {
+uint32_t inflate_to_file(const unsigned char *data_start,
+                         uint64_t data_size,
+                         FILE *ofile,
+                         TaskControl &tc) {
     uint32_t crcvalue = crc32(0, Z_NULL, 0);
     int ret;
     unsigned have;
@@ -93,6 +97,7 @@ uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FI
 
         /* run inflate() on input until output buffer not full */
         do {
+            tc.check_for_stopping();
             strm.avail_out = CHUNK;
             strm.next_out = out.get();
             ret = inflate(&strm, Z_NO_FLUSH);
@@ -125,7 +130,10 @@ uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE 
 }
 
 #else
-uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile) {
+uint32_t lzma_to_file(const unsigned char *data_start,
+                      uint64_t data_size,
+                      FILE *ofile,
+                      TaskControl &tc) {
     uint32_t crcvalue = crc32(0, Z_NULL, 0);
     std::unique_ptr<unsigned char[]> out(new unsigned char [CHUNK]);
     lzma_stream strm = LZMA_STREAM_INIT;
@@ -154,6 +162,7 @@ uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE 
     strm.next_in = current;
     /* decompress until data ends */
     do {
+        tc.check_for_stopping();
         if (strm.total_in == data_size - offset)
             break;
 
@@ -175,7 +184,11 @@ uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE 
 }
 #endif
 
-uint32_t unstore_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile) {
+uint32_t unstore_to_file(const unsigned char *data_start,
+                         uint64_t data_size,
+                         FILE *ofile,
+                         TaskControl &tc) {
+    tc.check_for_stopping();
     auto bytes_written = fwrite(data_start, 1, data_size, ofile);
     if(bytes_written != data_size) {
         throw_system("Could not write file fully:");
@@ -192,7 +205,12 @@ void create_symlink(const unsigned char *data_start, uint64_t data_size, const s
 #endif
 }
 
-void create_file(const localheader &lh, const centralheader &ch, const unsigned char *data_start, uint64_t data_size, const std::string &outname) {
+void create_file(const localheader &lh,
+                 const centralheader &ch,
+                 const unsigned char *data_start,
+                 uint64_t data_size,
+                 const std::string &outname,
+                 TaskControl &tc) {
     decltype(unstore_to_file) *f;
     if(ch.compression_method == ZIP_NO_COMPRESSION) {
         f = unstore_to_file;
@@ -211,7 +229,7 @@ void create_file(const localheader &lh, const centralheader &ch, const unsigned 
     File ofile(extraction_name.c_str(), "w+b");
     uint32_t crc32;
     try {
-        crc32 = (*f)(data_start, data_size, ofile.get());
+        crc32 = (*f)(data_start, data_size, ofile.get(), tc);
     } catch(...) {
         unlink(extraction_name.c_str());
         throw;
@@ -272,12 +290,17 @@ filetype detect_filetype(const localheader &lh, const centralheader &ch) {
     return FILE_ENTRY;
 }
 
-void do_unpack(const localheader &lh, const centralheader &ch, const unsigned char *data_start, uint64_t data_size, const std::string &outname) {
+void do_unpack(const localheader &lh,
+               const centralheader &ch,
+               const unsigned char *data_start,
+               uint64_t data_size,
+               const std::string &outname,
+               TaskControl &tc) {
     switch(detect_filetype(lh, ch)) {
     case DIRECTORY_ENTRY : mkdirp(outname); break;
     case SYMLINK_ENTRY : create_symlink(data_start, data_size, outname); break;
     case CHARDEV_ENTRY : create_device(lh, outname); break;
-    case FILE_ENTRY : create_file(lh, ch, data_start, data_size, outname); break;
+    case FILE_ENTRY : create_file(lh, ch, data_start, data_size, outname, tc); break;
     default : throw std::runtime_error("Unknown file type.");
     }
 }
@@ -305,7 +328,9 @@ void set_unix_permissions(const localheader &lh, const centralheader &ch, const 
 
 UnpackResult unpack_entry(const std::string &prefix, const localheader &lh,
         const centralheader &ch,
-        const unsigned char *data_start, uint64_t data_size) {
+        const unsigned char *data_start,
+        uint64_t data_size,
+        TaskControl &tc) {
     try {
         std::string ofname;
         if(prefix.empty()) {
@@ -317,7 +342,7 @@ UnpackResult unpack_entry(const std::string &prefix, const localheader &lh,
                 ofname = prefix + lh.fname;
             }
         }
-        do_unpack(lh, ch, data_start, data_size, ofname);
+        do_unpack(lh, ch, data_start, data_size, ofname, tc);
         if(ch.version_made_by>>8 == MADE_BY_UNIX) {
             set_unix_permissions(lh, ch, ofname);
         }
