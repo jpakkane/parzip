@@ -1,11 +1,16 @@
 /build
+/buildopt
+/buildcross
 .settings
 .project
 .cproject
 .pydevproject
-/jzip.pro*
 *~
 __pycache__
 *.pro
 *.pro.*
 .DS_Store
+
+/subprojects/packagecache/
+/subprojects/xz-5.2.1/
+/subprojects/zlib-1.2.8/
