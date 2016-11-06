@@ -1,12 +1,19 @@
-#include <windows.h>
+#include<windows.h>
+#include<commctrl.h>
+#include<cstdio>
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
+void add_item(HWND hwndTV);
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, int iCmdShow) {
     static TCHAR name[] = TEXT("Parzip");
-    HWND hwnd;
+    RECT rcClient;  // dimensions of client area
+    HWND hwnd, hwndtv;
     MSG msg;
     WNDCLASS wndclass;
+
+    InitCommonControls();
 
     wndclass.style = CS_HREDRAW | CS_VREDRAW;
     wndclass.lpfnWndProc = WndProc;
@@ -25,7 +32,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, int iCmdShow) {
     }
 
     hwnd = CreateWindow(name,
-                        TEXT("Parallel unzipper."),
+                        TEXT("Parallel unzipper"),
                         WS_OVERLAPPEDWINDOW,
                         CW_USEDEFAULT,
                         CW_USEDEFAULT,
@@ -36,8 +43,25 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, int iCmdShow) {
                         hInstance,
                         NULL);
 
+    GetClientRect(hwnd, &rcClient);
+    hwndtv = CreateWindowEx(0,
+                            WC_TREEVIEW,
+                            TEXT("Tree view"),
+                            WS_CHILD,
+                            0,
+                            0,
+                            rcClient.right,
+                            rcClient.bottom,
+                            hwnd,
+                            NULL,
+                            hInstance,
+                            NULL);
+
+    ShowWindow(hwndtv, iCmdShow);
+    UpdateWindow(hwndtv);
     ShowWindow(hwnd, iCmdShow);
     UpdateWindow(hwnd);
+    add_item(hwndtv);
     while(GetMessage(&msg, NULL, 0, 0)) {
       TranslateMessage(&msg);
       DispatchMessage(&msg);
@@ -45,22 +69,34 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, int iCmdShow) {
     return msg.wParam;
 }
 
+void add_item(HWND hwndTV) {
+    static char msg[] = "This is text inside a treeview.";
+    TVITEM tvi;
+    TVINSERTSTRUCT tvins;
+    static HTREEITEM hPrev = (HTREEITEM)TVI_FIRST;
+
+    tvi.mask = TVIF_TEXT;
+
+    // Set the text of the item.
+    tvi.pszText = msg;
+    tvi.cchTextMax = sizeof(tvi.pszText)/sizeof(tvi.pszText[0]);
+
+    tvins.item = tvi;
+    tvins.hInsertAfter = TVI_ROOT;
+    tvins.hParent = TVI_ROOT;
+
+    // Add the item to the tree-view control.
+    hPrev = (HTREEITEM)SendMessage(hwndTV, TVM_INSERTITEM,
+        0, (LPARAM)(LPTVINSERTSTRUCT)&tvins);
+
+    if (hPrev == NULL) {
+        MessageBox(NULL, TEXT("Inserting failed."), NULL, MB_ICONERROR);
+        return;
+    }
+}
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
-  HDC hdc;
-  PAINTSTRUCT ps;
-  RECT rect;
-
   switch(message) {
-  case WM_CREATE: return 0;
-
-  case WM_PAINT:
-    hdc = BeginPaint(hwnd, &ps);
-    GetClientRect(hwnd, &rect);
-    DrawText(hdc, TEXT("Add treeview here."), -1, &rect,
-             DT_SINGLELINE | DT_CENTER | DT_VCENTER);
-    EndPaint(hwnd, &ps);
-    return 0;
-
   case WM_DESTROY:
     PostQuitMessage(0);
     return 0;
