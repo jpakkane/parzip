@@ -64,6 +64,7 @@ fileinfo get_unix_stats(const std::string &fname) {
 #endif
     sd.mode = buf.st_mode;
     sd.fsize = buf.st_size;
+    sd.device_id = buf.st_rdev;
     return sd;
 }
 

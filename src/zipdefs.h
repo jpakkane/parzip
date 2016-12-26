@@ -62,6 +62,7 @@ struct fileinfo {
     unixextra ue;
     uint32_t mode;
     uint64_t fsize;
+    uint64_t device_id; // VERIFY: is big enough to hold dev_t?
 };
 
 struct localheader {

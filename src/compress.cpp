@@ -23,6 +23,7 @@
 #include"taskcontrol.h"
 
 #include<sys/stat.h>
+#include<cstring>
 #ifdef _WIN32
 #else
 #include<unistd.h>
@@ -245,6 +246,24 @@ compressresult create_symlink(const fileinfo &fi) {
 #endif
 }
 
+compressresult create_chrdev(const fileinfo &fi) {
+    std::array<unsigned char, 8> buf;
+    FILE *tf = tmpfile();
+    if(!tf) {
+        throw_system("Could not create temp file: ");
+    }
+    auto native_major_byte = major(fi.device_id);
+    auto native_minor_byte = minor(fi.device_id);
+    auto major_byte = le32toh(native_major_byte);
+    auto minor_byte = le32toh(native_minor_byte);
+    memcpy(buf.data(), &major_byte, 4);
+    memcpy(buf.data() + 4, &minor_byte, 4);
+    compressresult result{File(tf), CHARDEV_ENTRY, CRC32(buf.data(), buf.size()), ZIP_NO_COMPRESSION, fi};
+    result.f.write(buf.data(), buf.size());
+    result.f.flush();
+    return result;
+}
+
 }
 
 compressresult compress_entry(const fileinfo &f, bool use_lzma, const TaskControl &tc) {
@@ -259,6 +278,9 @@ compressresult compress_entry(const fileinfo &f, bool use_lzma, const TaskContro
     }
     if(S_ISLNK(f.mode)) {
         return create_symlink(f);
+    }
+    if(S_ISCHR(f.mode)) {
+        return create_chrdev(f);
     }
     std::string error("Unknown file type: ");
     error += f.fname;

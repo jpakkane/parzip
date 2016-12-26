@@ -162,7 +162,7 @@ centralheader write_entry(File &ofile, const compressresult &compression_result)
     uint64_t uncompressed_size = i.fsize;
     uint64_t compressed_size;
     lh.fname = i.fname;
-    if(compression_result.entrytype == FILE_ENTRY) {
+    if(compression_result.entrytype == FILE_ENTRY || compression_result.entrytype == CHARDEV_ENTRY) {
         compressed_size = compression_result.f.tell();
     } else if (compression_result.entrytype == DIRECTORY_ENTRY) {
         compressed_size = 0;
