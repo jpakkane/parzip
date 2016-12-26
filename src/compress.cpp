@@ -260,5 +260,7 @@ compressresult compress_entry(const fileinfo &f, bool use_lzma, const TaskContro
     if(S_ISLNK(f.mode)) {
         return create_symlink(f);
     }
-    throw std::runtime_error("Unknown file type.");
+    std::string error("Unknown file type: ");
+    error += f.fname;
+    throw std::runtime_error(error);
 }

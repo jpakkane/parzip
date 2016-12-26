@@ -90,12 +90,16 @@ std::vector<std::string> handle_dir_platform(const std::string &dirname) {
 #else
 
 std::vector<std::string> handle_dir_platform(const std::string &dirname) {
+    std::vector<std::string> entries;
     std::unique_ptr<DIR, int(*)(DIR*)> dirholder(opendir(dirname.c_str()), closedir);
     auto dir = dirholder.get();
+    if(!dir) {
+        printf("Could not access directory: %s\n", dirname.c_str());
+        return entries;
+    }
     std::array<char, sizeof(dirent) + NAME_MAX + 1> buf;
     struct dirent *cur = reinterpret_cast<struct dirent*>(buf.data());
     struct dirent *de;
-    std::vector<std::string> entries;
     std::string basename;
     while (readdir_r(dir, cur, &de) == 0 && de) {
         basename = cur->d_name;
@@ -129,10 +133,8 @@ std::vector<fileinfo> expand_entry(const std::string &fname) {
         auto new_ones = expand_dir(fname);
         std::move(new_ones.begin(), new_ones.end(), std::back_inserter(result));
         return result;
-    } else if(is_file(fi) || is_symlink(fi)) {
-        return result;
     } else {
-        throw std::runtime_error("Unimplemented.");
+        return result;
     }
 }
 
