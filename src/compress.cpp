@@ -247,20 +247,25 @@ compressresult create_symlink(const fileinfo &fi) {
 }
 
 compressresult create_chrdev(const fileinfo &fi) {
-    std::array<unsigned char, 8> buf;
+    std::string buf(8, 'x');
     FILE *tf = tmpfile();
     if(!tf) {
         throw_system("Could not create temp file: ");
     }
     auto native_major_byte = major(fi.device_id);
     auto native_minor_byte = minor(fi.device_id);
-    auto major_byte = le32toh(native_major_byte);
-    auto minor_byte = le32toh(native_minor_byte);
-    memcpy(buf.data(), &major_byte, 4);
-    memcpy(buf.data() + 4, &minor_byte, 4);
-    compressresult result{File(tf), CHARDEV_ENTRY, CRC32(buf.data(), buf.size()), ZIP_NO_COMPRESSION, fi};
-    result.f.write(buf.data(), buf.size());
-    result.f.flush();
+    auto major_byte = htole32(native_major_byte);
+    auto minor_byte = htole32(native_minor_byte);
+
+    memcpy(&buf[0], &major_byte, 4);
+    memcpy(&buf[0] + 4, &minor_byte, 4);
+    auto final_fi = fi;
+    final_fi.ue.data = buf;
+    compressresult result{File(tf),
+        CHARDEV_ENTRY,
+        CRC32((const unsigned char*)&buf[0], 0),
+        ZIP_NO_COMPRESSION,
+        final_fi};
     return result;
 }
 

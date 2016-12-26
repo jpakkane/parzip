@@ -253,12 +253,21 @@ void create_device(const localheader &lh, const std::string &outname) {
 #else
     const std::string &d = lh.unix.data;
     if(d.size() != 8) {
-        throw std::runtime_error("Incorrect extra data for character device.");
+        std::string msg("Incorrect extra data for character device, expected 8, got ");
+        msg += std::to_string(d.size());
+        msg += ".";
+        throw std::runtime_error(msg);
     }
-    uint32_t major = le32toh(*reinterpret_cast<const uint32_t*>(&d[0]));
-    uint32_t minor = le32toh(*reinterpret_cast<const uint32_t*>(&d[4]));
-    if(mknod(outname.c_str(), S_IFCHR, makedev(major, minor)) != 0) {
-        throw_system("Could not create device node:");
+    create_dirs_for_file(outname);
+    uint32_t major_id = le32toh(*reinterpret_cast<const uint32_t*>(&d[0]));
+    uint32_t minor_id = le32toh(*reinterpret_cast<const uint32_t*>(&d[4]));
+    if(mknod(outname.c_str(), S_IFCHR, makedev(major_id, minor_id)) != 0) {
+        std::string msg("Could not create device node, major ");
+        msg += std::to_string(major_id);
+        msg += " minor ";
+        msg += std::to_string(minor_id);
+        msg += ": ";
+        throw_system(msg.c_str());
     }
 #endif
 }

@@ -143,7 +143,7 @@ std::string pack_zip64(uint64_t uncompressed_size, uint64_t compressed_size, uin
 
 std::string pack_unix_extra(unixextra ue) {
     const uint16_t tag = 0x0d;
-    const uint16_t size = 4+4+2+2;
+    const uint16_t size = 4+4+2+2+ue.data.size();
     std::string result;
     append_data(result, htole16(tag));
     append_data(result, htole16(size));
@@ -151,6 +151,7 @@ std::string pack_unix_extra(unixextra ue) {
     append_data(result, htole32(ue.mtime));
     append_data(result, htole16(ue.uid));
     append_data(result, htole16(ue.gid));
+    result += ue.data;
     return result;
 }
 
