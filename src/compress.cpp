@@ -234,12 +234,21 @@ compressresult create_symlink(const fileinfo &fi) {
     if((uint64_t)r > fi.fsize) {
         throw std::runtime_error("Symlink size changed while packing.");
     }
+    buf[r] = '\0';
 
     FILE *tf = tmpfile();
     if(!tf) {
         throw_system("Could not create temp file: ");
     }
-    compressresult result{File(tf), FILE_ENTRY, CRC32(buf.get(), r), ZIP_NO_COMPRESSION, fi};
+    // Zip spec says that symlink target should be in Unix extra data but other
+    // programs put it in the file data. Let's do both to be sure.
+    auto final_fi = fi;
+    final_fi.ue.data.insert(0, (const char*)buf.get());
+    compressresult result{File(tf),
+        FILE_ENTRY,
+        CRC32(buf.get(), r),
+        ZIP_NO_COMPRESSION,
+        final_fi};
     result.f.write(buf.get(), r);
     result.f.flush();
     return result;
