@@ -299,26 +299,30 @@ filetype detect_filetype(const localheader &lh, const centralheader &ch) {
     return FILE_ENTRY;
 }
 
-void do_unpack(const localheader &lh,
+filetype do_unpack(const localheader &lh,
                const centralheader &ch,
                const unsigned char *data_start,
                uint64_t data_size,
                const std::string &outname,
                const TaskControl &tc) {
-    switch(detect_filetype(lh, ch)) {
+    auto ftype = detect_filetype(lh, ch);
+    switch(ftype) {
     case DIRECTORY_ENTRY : mkdirp(outname); break;
     case SYMLINK_ENTRY : create_symlink(data_start, data_size, outname); break;
     case CHARDEV_ENTRY : create_device(lh, outname); break;
     case FILE_ENTRY : create_file(lh, ch, data_start, data_size, outname, tc); break;
     default : throw std::runtime_error("Unknown file type.");
     }
+    return ftype;
 }
 
 void set_unix_permissions(const localheader &lh, const centralheader &ch, const std::string &fname) {
 #ifndef _WIN32
     // This part of the zip spec is poorly documented. :(
     // https://trac.edgewall.org/attachment/ticket/8919/ZipDownload.patch
-    chmod(fname.c_str(), ch.external_file_attributes >> 16);
+    if(chmod(fname.c_str(), (ch.external_file_attributes >> 16)&0777) != 0) {
+        throw_system("Could not change ownership: ");
+    }
     // Only support mtime if it is in zip64 info.
     // FIXME add support for crazy zip dos format.
     // http://mindprod.com/jgloss/zip.html
@@ -328,8 +332,8 @@ void set_unix_permissions(const localheader &lh, const centralheader &ch, const 
         tb.actime = lh.unix.atime;
         tb.modtime = lh.unix.mtime;
         utime(fname.c_str(), &tb);
-        chown(fname.c_str(), lh.unix.uid, lh.unix.gid);
     }
+    chown(fname.c_str(), lh.unix.uid, lh.unix.gid);
 #endif
 }
 
@@ -351,8 +355,8 @@ UnpackResult unpack_entry(const std::string &prefix, const localheader &lh,
                 ofname = prefix + lh.fname;
             }
         }
-        do_unpack(lh, ch, data_start, data_size, ofname, tc);
-        if(ch.version_made_by>>8 == MADE_BY_UNIX) {
+        auto ftype = do_unpack(lh, ch, data_start, data_size, ofname, tc);
+        if(ch.version_made_by>>8 == MADE_BY_UNIX && ftype != SYMLINK_ENTRY) {
             set_unix_permissions(lh, ch, ofname);
         }
         return UnpackResult{true, "OK: " + lh.fname};
