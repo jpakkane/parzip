@@ -29,6 +29,11 @@
 #include<unistd.h>
 #include<lzma.h> // libxz does not work on MSVC.
 #endif
+
+#if defined(__linux__)
+#include<sys/sysmacros.h>
+#endif
+
 #include<cassert>
 
 #include<memory>

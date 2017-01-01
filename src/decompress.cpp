@@ -44,6 +44,10 @@
 #include<algorithm>
 #include<cstdint>
 
+#if defined(__linux__)
+#include<sys/sysmacros.h>
+#endif
+
 #include <cstring>
 #include <cassert>
 #include<cstdio>
