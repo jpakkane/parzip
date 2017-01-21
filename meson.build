@@ -1,5 +1,5 @@
 project('parzip', 'cpp',
-  version : '1.1.0',
+  version : '1.2.0',
   license : 'GPLv3+',
   default_options : ['cpp_std=c++14', 'warning_level=3'])
 
@@ -11,6 +11,7 @@ else
   compr_deps = [zdep]
 endif
 threaddep = dependency('threads')
+
 gtkdep = dependency('gtk+-3.0', required : false)
 
 subdir('man')
