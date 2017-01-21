@@ -228,7 +228,6 @@ void create_file(const localheader &lh,
     if(exists_on_fs(outname)) {
         throw std::runtime_error("Already exists, will not overwrite.");
     }
-    create_dirs_for_file(outname);
     std::string extraction_name = outname + "$ZIPTMP";
     File ofile(extraction_name.c_str(), "w+b");
     uint32_t crc32;
@@ -312,9 +311,9 @@ filetype do_unpack(const localheader &lh,
     auto ftype = detect_filetype(lh, ch);
     switch(ftype) {
     case DIRECTORY_ENTRY : mkdirp(outname); break;
-    case SYMLINK_ENTRY : create_symlink(data_start, data_size, outname); break;
-    case CHARDEV_ENTRY : create_device(lh, outname); break;
-    case FILE_ENTRY : create_file(lh, ch, data_start, data_size, outname, tc); break;
+    case SYMLINK_ENTRY :  create_dirs_for_file(outname); create_symlink(data_start, data_size, outname); break;
+    case CHARDEV_ENTRY : create_dirs_for_file(outname); create_device(lh, outname); break;
+    case FILE_ENTRY : create_dirs_for_file(outname); create_file(lh, ch, data_start, data_size, outname, tc); break;
     default : throw std::runtime_error("Unknown file type.");
     }
     return ftype;
