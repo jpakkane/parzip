@@ -20,6 +20,7 @@
 #include"mmapper.h"
 #include<portable_endian.h>
 #include<sys/stat.h>
+#include<stdexcept>
 
 File::File(const std::string &fname, const char *mode) {
     f = fopen(fname.c_str(), mode);
@@ -73,6 +74,9 @@ MMapper File::mmap() const {
 
 void File::read(void *buf, size_t bufsize) {
     if(fread(buf, 1, bufsize, f) != bufsize) {
+        if(feof(f)) {
+          throw std::runtime_error("Tried to read past end of file.");
+        }
         throw_system("Could not read data:");
     }
 }
