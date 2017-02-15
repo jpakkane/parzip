@@ -65,21 +65,27 @@ void unpack_zip64_sizes(const std::string &extra_field, uint64_t &compressed_siz
 void unpack_unix(const std::string &extra, unixextra &unix) {
     size_t offset = 0;
     while(offset < extra.size()) {
-        uint16_t header_id = le16toh(*reinterpret_cast<const uint16_t*>(&extra[offset]));
+        if(offset + 4 >= extra.size()) {
+            throw std::runtime_error("Malformed extra data.");
+        }
+        uint16_t header_id = le16toh(*reinterpret_cast<const uint16_t*>(&extra.at(offset)));
         offset+=2;
-        uint16_t data_size = le16toh(*reinterpret_cast<const uint16_t*>(&extra[offset]));
+        uint16_t data_size = le16toh(*reinterpret_cast<const uint16_t*>(&extra.at(offset)));
         offset+=2;
         auto extra_end = offset + data_size;
         if(header_id == ZIP_EXTRA_UNIX) {
-            unix.atime = le32toh(*reinterpret_cast<const uint32_t*>(&extra[offset]));
+            unix.atime = le32toh(*reinterpret_cast<const uint32_t*>(&extra.at(offset)));
             offset += 4;
-            unix.mtime = le32toh(*reinterpret_cast<const uint32_t*>(&extra[offset]));
+            unix.mtime = le32toh(*reinterpret_cast<const uint32_t*>(&extra.at(offset)));
             offset += 4;
-            unix.uid = le16toh(*reinterpret_cast<const uint16_t*>(&extra[offset]));
+            unix.uid = le16toh(*reinterpret_cast<const uint16_t*>(&extra.at(offset)));
             offset += 2;
-            unix.gid = le16toh(*reinterpret_cast<const uint16_t*>(&extra[offset]));
+            unix.gid = le16toh(*reinterpret_cast<const uint16_t*>(&extra.at(offset)));
             offset += 2;
-            unix.data = std::string(&extra[offset], &extra[extra_end]);
+            if(offset > extra_end || extra_end > extra.size()) {
+                throw std::runtime_error("Malformed Unix extra data.");
+            }
+            unix.data = std::string(&extra[offset], extra[extra_end]);
             return;
         }
         offset += data_size;
