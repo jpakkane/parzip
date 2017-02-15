@@ -1,6 +1,7 @@
 /build
 /buildopt
 /buildcross
+/buildfuzz
 .settings
 .project
 .cproject
