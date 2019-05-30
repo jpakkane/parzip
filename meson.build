@@ -30,3 +30,5 @@ if host_machine.system() == 'windows'
 endif
 
 subdir('fuzz')
+subdir('test')
+
