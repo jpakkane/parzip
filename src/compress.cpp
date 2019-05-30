@@ -166,7 +166,8 @@ compressresult compress_lzma(const fileinfo &fi, const TaskControl &tc) {
         if (lzma_properties_encode(filter, (unsigned char *)x.data()) != LZMA_OK) {
             throw std::runtime_error("Could not encode filter properties.");
         }
-        result.f.write8(9); // This is what Python's lzma lib does. Copy it without understanding.
+        result.f.write8(9); // This is what Python's lzma lib does. Copy it
+                            // without understanding.
         result.f.write8(4);
         result.f.write16le(filter_size);
         result.f.write(x);

@@ -333,7 +333,8 @@ void set_unix_permissions(const localheader &lh, const centralheader &ch,
     // FIXME add support for crazy zip dos format.
     // http://mindprod.com/jgloss/zip.html
     if (lh.unix.atime != 0) {
-        // These can fail for various reasons (i.e. no chown privilegde), so ignore return values.
+        // These can fail for various reasons (i.e. no chown privilegde), so
+        // ignore return values.
         struct utimbuf tb;
         tb.actime = lh.unix.atime;
         tb.modtime = lh.unix.mtime;

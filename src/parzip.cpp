@@ -73,9 +73,10 @@ int main(int argc, char **argv) {
         return 1;
     }
     /*
-     * First all directory entries so they get created before files that go in them.
-     * Then files starting from the biggest ones, because a big file followed by lots of small files
-     * causes waste of resources. See zipfile.cpp for the explanation.
+     * First all directory entries so they get created before files that go in
+     * them. Then files starting from the biggest ones, because a big file
+     * followed by lots of small files causes waste of resources. See
+     * zipfile.cpp for the explanation.
      */
     auto midpoint = std::stable_partition(files.begin(), files.end(),
                                           [](const fileinfo &fi) { return is_dir(fi); });

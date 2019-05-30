@@ -290,13 +290,16 @@ void ZipCreator::run(const std::vector<fileinfo> &files, int num_threads) {
     futures.reserve(files.size());
     size_t i = 0;
     /*
-     * Keeping all CPU cores pegged seems like a simple thing but has a few kinks:
+     * Keeping all CPU cores pegged seems like a simple thing but has a few
+     * kinks:
      *
-     * - results need to be written in the final zip file in the same order as input files
-     * - starting num_of_cpus threads and waiting in the correct order blocks if there is
-     *   one huge file followed by a ton of smaller ones
-     * - having too many threads running or finished but not written to the final file
-     *   causes resource exhaustion (file descriptors, temp dir disk space etc)
+     * - results need to be written in the final zip file in the same order as
+     * input files
+     * - starting num_of_cpus threads and waiting in the correct order blocks if
+     * there is one huge file followed by a ton of smaller ones
+     * - having too many threads running or finished but not written to the
+     * final file causes resource exhaustion (file descriptors, temp dir disk
+     * space etc)
      */
     for (const auto &f : files) {
         int running, finished;
@@ -310,9 +313,10 @@ void ZipCreator::run(const std::vector<fileinfo> &files, int num_threads) {
         if (tc.should_stop()) {
             break;
         }
-        // If we exhaust the maximum number of results waiting to be written we must wait
-        // until resources become available. This means not pegging cpus to the max
-        // but there does not seem to be a way to easily work around this.
+        // If we exhaust the maximum number of results waiting to be written we
+        // must wait until resources become available. This means not pegging
+        // cpus to the max but there does not seem to be a way to easily work
+        // around this.
         while (!futures.empty() && i < futures.size() &&
                running + finished >= max_waiting_threads) {
             pop_future(ofile, futures, i++, chs, tc);

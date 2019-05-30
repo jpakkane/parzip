@@ -103,8 +103,8 @@ private:
             if ((int64_t)buffer.size() == queue_size()) {
                 set_state(l, QueueState::FULL);
                 if (pushed_so_far == inbuf_size) {
-                    // Everything is in but we don't need to write any more stuff.
-                    // Return rather than blocking.
+                    // Everything is in but we don't need to write any more
+                    // stuff. Return rather than blocking.
                     return;
                 }
                 // Wait until someone grabs buffer contents.
@@ -120,7 +120,8 @@ private:
         }
     }
 
-    // The first argument is only to ensure that this is only called with a held lock.
+    // The first argument is only to ensure that this is only called with a held
+    // lock.
     void set_state(std::unique_lock<std::mutex> &, const QueueState new_state) {
         const bool should_notify = new_state != st;
         if (st == QueueState::SHUTDOWN) {

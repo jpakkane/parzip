@@ -7,3 +7,4 @@ BreakBeforeBraces: Attach
 AllowShortIfStatementsOnASingleLine: false
 IndentCaseLabels: false
 Standard: Cpp11
+ReflowComments: true
