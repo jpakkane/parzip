@@ -55,6 +55,9 @@ public:
         }
         push_internal(l, data, inbuf_size);
     }
+    void push(const unsigned char *data, int64_t inbuf_size) {
+        push(reinterpret_cast<const char*>(data), inbuf_size);
+    }
 
     std::vector<char> pop() {
         std::vector<char> rv;

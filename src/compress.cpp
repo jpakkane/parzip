@@ -48,7 +48,7 @@ using std::min;
 
 namespace {
 
-compressresult store_file(const fileinfo &fi);
+compressresult store_file(const fileinfo &fi, ByteQueue &queue);
 
 bool is_compressible(const unsigned char *buf, const size_t bufsize) {
     assert(bufsize > 0);
@@ -81,7 +81,7 @@ bool is_compressible(const unsigned char *buf, const size_t bufsize) {
     return ((double)strm.total_out) / blocksize < required_ratio;
 }
 
-compressresult compress_zlib(const fileinfo &fi, const TaskControl &tc) {
+compressresult compress_zlib(const fileinfo &fi, ByteQueue &queue, const TaskControl &tc) {
     const int CHUNK = 1024 * 1024;
     std::unique_ptr<unsigned char[]> out(new unsigned char[CHUNK]);
     File infile(fi.fname, "rb");
@@ -95,11 +95,7 @@ compressresult compress_zlib(const fileinfo &fi, const TaskControl &tc) {
         throw std::runtime_error("Zlib init failed.");
     }
     std::unique_ptr<z_stream, int (*)(z_stream *)> zcloser(&strm, deflateEnd);
-    FILE *f = tmpfile();
-    if (!f) {
-        throw_system("Could not create temp file: ");
-    }
-    compressresult result{File(f), FILE_ENTRY, CRC32(buf, buf.size()), ZIP_DEFLATE, fi};
+    compressresult result{FILE_ENTRY, CRC32(buf, buf.size()), ZIP_DEFLATE, ""};
     strm.avail_in = buf.size();
     strm.next_in = buf;
 
@@ -110,17 +106,13 @@ compressresult compress_zlib(const fileinfo &fi, const TaskControl &tc) {
         tc.throw_if_stopped();
         assert(ret != Z_STREAM_ERROR); /* state not clobbered */
         int write_size = CHUNK - strm.avail_out;
-        if (fwrite(out.get(), 1, write_size, result.f) != (unsigned int)write_size ||
-            ferror(result.f)) {
-            throw_system("Could not write to file:");
-        }
+        queue.push(out.get(), write_size);
     } while (strm.avail_out == 0);
     assert(strm.avail_in == 0); /* all input will be used */
 
     /* done when last data in file processed */
     assert(ret == Z_STREAM_END); /* stream will be complete */
 
-    fflush(result.f);
     return result;
 }
 
@@ -131,20 +123,16 @@ compressresult compress_lzma(const fileinfo &fi) {
 
 #else
 
-compressresult compress_lzma(const fileinfo &fi, const TaskControl &tc) {
+compressresult compress_lzma(const fileinfo &fi, ByteQueue &queue, const TaskControl &tc) {
     const int CHUNK = 1024 * 1024;
     File infile(fi.fname, "rb");
     MMapper buf = infile.mmap();
     if (!is_compressible(buf, buf.size())) {
-        return store_file(fi);
+        return store_file(fi, queue);
     }
-    FILE *f = tmpfile();
     std::unique_ptr<unsigned char[]> out(new unsigned char[CHUNK]);
     uint32_t filter_size;
-    if (!f) {
-        throw_system("Could not create temp file: ");
-    }
-    compressresult result{File(f), FILE_ENTRY, CRC32(buf, buf.size()), ZIP_LZMA, fi};
+    compressresult result{FILE_ENTRY, CRC32(buf, buf.size()), ZIP_LZMA, ""};
     lzma_options_lzma opt_lzma;
     lzma_stream strm = LZMA_STREAM_INIT;
     if (lzma_lzma_preset(&opt_lzma, LZMA_PRESET_DEFAULT)) {
@@ -166,11 +154,16 @@ compressresult compress_lzma(const fileinfo &fi, const TaskControl &tc) {
         if (lzma_properties_encode(filter, (unsigned char *)x.data()) != LZMA_OK) {
             throw std::runtime_error("Could not encode filter properties.");
         }
-        result.f.write8(9); // This is what Python's lzma lib does. Copy it
-                            // without understanding.
-        result.f.write8(4);
-        result.f.write16le(filter_size);
-        result.f.write(x);
+        uint8_t write_byte;
+        // This is what Python's lzma lib does. Copy it
+        // without understanding.
+        write_byte = 9;
+        queue.push((char*)&write_byte, sizeof(write_byte));
+        write_byte = 4;
+        queue.push((char*)&write_byte, sizeof(write_byte));
+        uint16_t lefilter = htole16(filter_size);
+        queue.push((char*)&lefilter, sizeof(lefilter));
+        queue.push(x.data(), x.size());
     }
     std::unique_ptr<lzma_stream, void (*)(lzma_stream *)> lcloser(&strm, lzma_end);
 
@@ -189,9 +182,7 @@ compressresult compress_lzma(const fileinfo &fi, const TaskControl &tc) {
         tc.throw_if_stopped();
         if (strm.avail_out == 0 || ret == LZMA_STREAM_END) {
             size_t write_size = CHUNK - strm.avail_out;
-            if (fwrite(out.get(), 1, write_size, result.f) != write_size || ferror(result.f)) {
-                throw_system("Could not write to file:");
-            }
+            queue.push(out.get(), write_size);
             strm.next_out = out.get();
             strm.avail_out = CHUNK;
         }
@@ -204,32 +195,31 @@ compressresult compress_lzma(const fileinfo &fi, const TaskControl &tc) {
         }
     }
 
-    fflush(result.f);
     return result;
 }
 
 #endif
 
-compressresult store_file(const fileinfo &fi) {
+compressresult store_file(const fileinfo &fi, ByteQueue &queue) {
     FILE *f = fopen(fi.fname.c_str(), "r");
     if (!f) {
         throw_system("Could not open input file: ");
     }
+    File infile(f);
 
-    compressresult result{File(f), FILE_ENTRY, (uint32_t)-1, ZIP_NO_COMPRESSION, fi};
-    auto mmap = result.f.mmap();
+    compressresult result{FILE_ENTRY, (uint32_t)-1, ZIP_NO_COMPRESSION, ""};
+    auto mmap = infile.mmap();
     result.crc32 = CRC32(mmap, mmap.size());
-    // Status writer expects location to be at the end of the file.
-    result.f.seek(0, SEEK_END);
+    queue.push(mmap, mmap.size());
     return result;
 }
 
-compressresult create_dir(const fileinfo &fi) {
-    compressresult r{nullptr, DIRECTORY_ENTRY, CRC32(nullptr, 0), ZIP_NO_COMPRESSION, fi};
+compressresult create_dir(const fileinfo &, ByteQueue &) {
+    compressresult r{DIRECTORY_ENTRY, CRC32(nullptr, 0), ZIP_NO_COMPRESSION, ""};
     return r;
 }
 
-compressresult create_symlink(const fileinfo &fi) {
+compressresult create_symlink(const fileinfo &fi, ByteQueue &queue) {
 #ifdef _WIN32
     throw std::runtime_error("Symlinks not supported on Windows.");
 #else
@@ -251,14 +241,14 @@ compressresult create_symlink(const fileinfo &fi) {
     // programs put it in the file data. Let's do both to be sure.
     auto final_fi = fi;
     final_fi.ue.data.insert(0, (const char *)buf.get());
-    compressresult result{File(tf), FILE_ENTRY, CRC32(buf.get(), r), ZIP_NO_COMPRESSION, final_fi};
-    result.f.write(buf.get(), r);
-    result.f.flush();
+    std::string edata{(char*)buf.get()};
+    compressresult result{FILE_ENTRY, CRC32(buf.get(), r), ZIP_NO_COMPRESSION, edata};
+    queue.push(edata.data(), edata.size());
     return result;
 #endif
 }
 
-compressresult create_chrdev(const fileinfo &fi) {
+compressresult create_chrdev(const fileinfo &fi, ByteQueue &) {
     std::string buf(8, 'x');
     FILE *tf = tmpfile();
     if (!tf) {
@@ -272,29 +262,29 @@ compressresult create_chrdev(const fileinfo &fi) {
     memcpy(&buf[0], &major_byte, 4);
     memcpy(&buf[0] + 4, &minor_byte, 4);
     auto final_fi = fi;
-    final_fi.ue.data = buf;
-    compressresult result{File(tf), CHARDEV_ENTRY, CRC32((const unsigned char *)&buf[0], 0),
-                          ZIP_NO_COMPRESSION, final_fi};
+    std::string ue_data{buf};
+    compressresult result{CHARDEV_ENTRY, CRC32((const unsigned char *)&buf[0], 0),
+                          ZIP_NO_COMPRESSION, ue_data};
     return result;
 }
 
 } // namespace
 
-compressresult compress_entry(const fileinfo &f, bool use_lzma, const TaskControl &tc) {
+compressresult compress_entry(const fileinfo &f, ByteQueue &queue, bool use_lzma, const TaskControl &tc) {
     if (S_ISREG(f.mode)) {
         if (f.fsize < TOO_SMALL_FOR_LZMA) {
-            return store_file(f);
+            return store_file(f, queue);
         }
-        return use_lzma ? compress_lzma(f, tc) : compress_zlib(f, tc);
+        return use_lzma ? compress_lzma(f, queue, tc) : compress_zlib(f, queue, tc);
     }
     if (S_ISDIR(f.mode)) {
-        return create_dir(f);
+        return create_dir(f, queue);
     }
     if (S_ISLNK(f.mode)) {
-        return create_symlink(f);
+        return create_symlink(f, queue);
     }
     if (S_ISCHR(f.mode)) {
-        return create_chrdev(f);
+        return create_chrdev(f, queue);
     }
     std::string error("Unknown file type: ");
     error += f.fname;

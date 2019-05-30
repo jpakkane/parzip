@@ -75,4 +75,5 @@ public:
     void write64be(uint64_t);
     void write(const std::string &s);
     void write(const unsigned char *s, uint64_t size);
+    void write(const char *s, uint64_t size);
 };

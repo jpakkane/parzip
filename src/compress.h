@@ -19,16 +19,17 @@
 
 #include "file.h"
 #include "zipdefs.h"
+#include "bytequeue.hpp"
+
 #include <string>
 
 class TaskControl;
 
 struct compressresult {
-    File f;
     filetype entrytype;
     uint32_t crc32;
     uint16_t cformat;
-    fileinfo fi;
+    std::string additional_unix_extra_data;
 };
 
-compressresult compress_entry(const fileinfo &f, bool use_lzma, const TaskControl &tc);
+compressresult compress_entry(const fileinfo &f, ByteQueue &queue, bool use_lzma, const TaskControl &tc);

@@ -178,3 +178,7 @@ void File::write(const unsigned char *s, uint64_t size) {
         throw_system("Could not write data:");
     }
 }
+
+void File::write(const char *s, uint64_t size) {
+    write((const unsigned char*)s, size);
+}
