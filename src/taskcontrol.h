@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Jussi Pakkanen.
+ * Copyright (C) 2016-2019 Jussi Pakkanen.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of version 3, or (at your option) any later version,
@@ -16,9 +16,9 @@
  */
 #pragma once
 
-#include<string>
-#include<vector>
-#include<mutex>
+#include <mutex>
+#include <string>
+#include <vector>
 
 enum TaskState {
     TASK_NOT_STARTED,
@@ -28,7 +28,6 @@ enum TaskState {
 
 class TaskControl final {
 public:
-
     TaskControl();
 
     void reserve(size_t num_entries);

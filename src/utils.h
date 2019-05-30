@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Jussi Pakkanen.
+ * Copyright (C) 2016-2019 Jussi Pakkanen.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of version 3, or (at your option) any later version,
@@ -17,11 +17,11 @@
 
 #pragma once
 
-#include"file.h"
+#include "file.h"
 
-#include<string>
-#include<cstdint>
-#include<cstdio>
+#include <cstdint>
+#include <cstdio>
+#include <string>
 
 void throw_system(const char *msg);
 

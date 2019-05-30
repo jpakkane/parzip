@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Jussi Pakkanen.
+ * Copyright (C) 2016-2019 Jussi Pakkanen.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of version 3, or (at your option) any later version,
@@ -17,33 +17,38 @@
 
 #pragma once
 
-#include<cstdio>
-#include<string>
+#include <cstdio>
+#include <string>
 
 class MMapper;
 
 class File final {
 private:
-
     FILE *f;
     void read(void *buf, size_t bufsize);
 
 public:
-
-    File() : f(nullptr) {};
+    File() : f(nullptr){};
     File(const File &) = delete;
-    File(File &&other) { f = other.f; other.f = nullptr; }
-    File& operator=(File &&other) { f = other.f; other.f = nullptr; return *this; }
+    File(File &&other) {
+        f = other.f;
+        other.f = nullptr;
+    }
+    File &operator=(File &&other) {
+        f = other.f;
+        other.f = nullptr;
+        return *this;
+    }
     ~File();
 
     File(const std::string &fname, const char *mode);
     File(FILE *opened);
 
-    operator FILE*() { return f; }
+    operator FILE *() { return f; }
 
-    FILE* get() const { return f; }
+    FILE *get() const { return f; }
     int64_t tell() const;
-    int seek(int64_t offset, int whence=SEEK_SET);
+    int seek(int64_t offset, int whence = SEEK_SET);
     int fileno() const;
 
     MMapper mmap() const;

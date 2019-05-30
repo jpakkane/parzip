@@ -15,12 +15,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include<bytequeue.hpp>
-#include<smalltest.hpp>
-#include<cstdint>
-#include<array>
-#include<vector>
-#include<algorithm>
+#include <algorithm>
+#include <array>
+#include <bytequeue.hpp>
+#include <cstdint>
+#include <smalltest.hpp>
+#include <vector>
 
 void simple_data_test() {
     ByteQueue bq1024(1024);
@@ -47,7 +47,7 @@ void split_data_test() {
 
 void big_buf_test() {
     const int queue_size = 1024;
-    const int test_size = queue_size*queue_size;
+    const int test_size = queue_size * queue_size;
     ByteQueue bq(queue_size);
     int bytes_received = 0;
     int bytes_inserted = 0;
@@ -55,9 +55,9 @@ void big_buf_test() {
     auto push_future = std::async(std::launch::async, [&bq, &bytes_inserted, &test_size] {
         const int insert_size = 1000;
         char some_buf[insert_size];
-        while(bytes_inserted < test_size) {
+        while (bytes_inserted < test_size) {
             int current_push_size;
-            if(bytes_inserted + insert_size > test_size) {
+            if (bytes_inserted + insert_size > test_size) {
                 current_push_size = test_size - bytes_inserted;
                 ST_ASSERT(current_push_size < insert_size);
             } else {
@@ -70,11 +70,11 @@ void big_buf_test() {
     });
 
     auto pop_future = std::async(std::launch::async, [&bq, &bytes_received] {
-        while(true) {
+        while (true) {
             bq.wait_until_full_or_shutdown();
             bytes_received += (int)bq.pop().size();
             QueueState cur_state = bq.state();
-            if(cur_state == QueueState::SHUTDOWN) {
+            if (cur_state == QueueState::SHUTDOWN) {
                 // Grab the last bits, if any.
                 bytes_received += (int)bq.pop().size();
                 return;
@@ -87,26 +87,25 @@ void big_buf_test() {
 
     ST_ASSERT(bytes_received == test_size);
     ST_ASSERT(bytes_inserted == test_size);
-
 }
 
 void forwarder(ByteQueue *in, ByteQueue *out) {
-    while(true) {
+    while (true) {
         in->wait_until_full_or_shutdown();
         auto data = in->pop();
         try {
             out->push(data.data(), data.size());
-        } catch(...) {
+        } catch (...) {
             in->shutdown();
             return;
         }
-        if(in->state() == QueueState::SHUTDOWN) {
+        if (in->state() == QueueState::SHUTDOWN) {
             auto final_data = in->pop();
             try {
-                if(!final_data.empty()) {
+                if (!final_data.empty()) {
                     out->push(final_data.data(), final_data.size());
                 }
-            } catch(...) {
+            } catch (...) {
             }
             out->shutdown();
             return;
@@ -120,9 +119,9 @@ std::string get_all(ByteQueue *in) {
         in->wait_until_full_or_shutdown();
         auto data = in->pop();
         result.insert(result.end(), data.begin(), data.end());
-    } while(in->state() != QueueState::SHUTDOWN);
+    } while (in->state() != QueueState::SHUTDOWN);
     auto final_data = in->pop();
-    if(!final_data.empty()) {
+    if (!final_data.empty()) {
         result.insert(result.end(), final_data.begin(), final_data.end());
     }
     return result;
@@ -142,18 +141,13 @@ std::string run_multibuf_test(const std::string &inmsg) {
     ByteQueue bq11(11);
     ByteQueue bq13(13);
     // Can't put non-movable things in an array. Gotta use pointers.
-    std::array<ByteQueue*, 7> queues{&bq1,
-        &bq2,
-        &bq3,
-        &bq5,
-        &bq7,
-        &bq11,
-        &bq13};
+    std::array<ByteQueue *, 7> queues{&bq1, &bq2, &bq3, &bq5, &bq7, &bq11, &bq13};
 
     std::vector<std::future<void>> operations;
     operations.reserve(queues.size());
-    for(size_t i=0; i<queues.size()-1; ++i) {
-        operations.emplace_back(std::async(std::launch::async, forwarder, queues[i+1], queues[i]));
+    for (size_t i = 0; i < queues.size() - 1; ++i) {
+        operations.emplace_back(
+            std::async(std::launch::async, forwarder, queues[i + 1], queues[i]));
     }
     auto result_getter = std::async(std::launch::async, get_all, queues[0]);
     auto push_result = std::async(std::launch::async, data_pusher, queues[6], inmsg);
@@ -176,7 +170,7 @@ void multibuf_test() {
     ST_ASSERT(inmsg == outmsg);
 }
 
-int main(int, char**) {
+int main(int, char **) {
     ST_TEST(simple_data_test);
     ST_TEST(split_data_test);
     ST_TEST(big_buf_test);

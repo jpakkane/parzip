@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Jussi Pakkanen.
+ * Copyright (C) 2016-2019 Jussi Pakkanen.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of version 3, or (at your option) any later version,
@@ -17,8 +17,8 @@
 
 #pragma once
 
-#include<cstdint>
-#include<string>
+#include <cstdint>
+#include <string>
 
 #define ZIP_NO_COMPRESSION 0
 #define ZIP_DEFLATE 8
@@ -72,7 +72,8 @@ struct localheader {
     uint16_t last_mod_time;
     uint16_t last_mod_date;
     uint32_t crc32;
-    uint64_t compressed_size; // On disk header format is 32 bits, but this is 64 bits to be able to store zip64 offsets, too.
+    uint64_t compressed_size; // On disk header format is 32 bits, but this is 64 bits to be able to
+                              // store zip64 offsets, too.
     uint64_t uncompressed_size;
     std::string fname;
     std::string extra;
@@ -89,9 +90,9 @@ struct centralheader {
     uint32_t crc32;
     uint32_t compressed_size;
     uint32_t uncompressed_size;
-    //file name length                2 bytes
-    //extra field length              2 bytes
-    //file comment length             2 bytes
+    // file name length                2 bytes
+    // extra field length              2 bytes
+    // file comment length             2 bytes
     uint16_t disk_number_start;
     uint16_t internal_file_attributes;
     uint32_t external_file_attributes;

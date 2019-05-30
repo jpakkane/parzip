@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Jussi Pakkanen.
+ * Copyright (C) 2016-2019 Jussi Pakkanen.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of version 3, or (at your option) any later version,
@@ -16,25 +16,23 @@
  */
 
 #pragma once
-#include"zipdefs.h"
-#include"taskcontrol.h"
-#include<string>
-#include<vector>
-#include<cstdio>
-#include<thread>
-#include<memory>
+#include "taskcontrol.h"
+#include "zipdefs.h"
+#include <cstdio>
+#include <memory>
+#include <string>
+#include <thread>
+#include <vector>
 
 class ZipCreator final {
 
 public:
-
     ZipCreator(const std::string fname);
     ~ZipCreator();
 
-    TaskControl* create(const std::vector<fileinfo> &files, int num_threads);
+    TaskControl *create(const std::vector<fileinfo> &files, int num_threads);
 
 private:
-
     void run(const std::vector<fileinfo> &files, int num_threads);
 
     std::unique_ptr<std::thread> t;

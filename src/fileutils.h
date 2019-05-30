@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Jussi Pakkanen.
+ * Copyright (C) 2016-2019 Jussi Pakkanen.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of version 3, or (at your option) any later version,
@@ -17,9 +17,9 @@
 
 #pragma once
 
-#include"zipdefs.h"
-#include<string>
-#include<vector>
+#include "zipdefs.h"
+#include <string>
+#include <vector>
 
 bool is_dir(const std::string &s);
 bool is_dir(const fileinfo &f);
@@ -37,10 +37,10 @@ std::vector<fileinfo> expand_files(const std::vector<std::string> &originals);
 
 #if defined _WIN32
 #if !defined S_ISDIR
-#define S_ISDIR(m) (((m) & _S_IFDIR) == _S_IFDIR)
+#define S_ISDIR(m) (((m)&_S_IFDIR) == _S_IFDIR)
 #endif
 #if !defined S_ISREG
-#define S_ISREG(m) (((m) & _S_IFREG) == _S_IFREG)
+#define S_ISREG(m) (((m)&_S_IFREG) == _S_IFREG)
 #endif
 #if !defined S_ISLNK
 #define S_ISLNK(m) (false)

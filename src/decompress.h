@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Jussi Pakkanen.
+ * Copyright (C) 2016-2019 Jussi Pakkanen.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of version 3, or (at your option) any later version,
@@ -17,8 +17,8 @@
 
 #pragma once
 
-#include"zipdefs.h"
-#include<string>
+#include "zipdefs.h"
+#include <string>
 
 class TaskControl;
 
@@ -27,9 +27,6 @@ struct UnpackResult {
     std::string msg;
 };
 
-UnpackResult unpack_entry(const std::string &prefix,
-        const localheader &lh,
-        const centralheader &ch,
-        const unsigned char *data_start,
-        uint64_t data_size,
-        const TaskControl &tc);
+UnpackResult unpack_entry(const std::string &prefix, const localheader &lh, const centralheader &ch,
+                          const unsigned char *data_start, uint64_t data_size,
+                          const TaskControl &tc);

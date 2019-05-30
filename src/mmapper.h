@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Jussi Pakkanen.
+ * Copyright (C) 2016-2019 Jussi Pakkanen.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of version 3, or (at your option) any later version,
@@ -18,25 +18,25 @@
 #pragma once
 
 #ifdef _WIN32
-#include<winsock2.h>
-#include<windows.h>
+#include <windows.h>
+#include <winsock2.h>
 #endif
-#include<cstdint>
+#include <cstdint>
 
 class File;
 
 class MMapper final {
 public:
     explicit MMapper(const File &file);
-    MMapper(const MMapper&) = delete;
-    MMapper(MMapper && other);
-    MMapper& operator=(const MMapper &) = delete;
-    MMapper& operator=(MMapper &&other);
+    MMapper(const MMapper &) = delete;
+    MMapper(MMapper &&other);
+    MMapper &operator=(const MMapper &) = delete;
+    MMapper &operator=(MMapper &&other);
     ~MMapper();
 
     uint64_t size() const { return map_size; }
 
-    operator unsigned char*() { return reinterpret_cast<unsigned char*>(addr); }
+    operator unsigned char *() { return reinterpret_cast<unsigned char *>(addr); }
 
 private:
     void *addr;

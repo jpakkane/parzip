@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Jussi Pakkanen.
+ * Copyright (C) 2016-2019 Jussi Pakkanen.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of version 3, or (at your option) any later version,
@@ -15,11 +15,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include<gtk/gtk.h>
+#include <gtk/gtk.h>
 
-#include<memory>
+#include <memory>
 
-#include"zipfile.h"
+#include "zipfile.h"
 
 struct app {
     GtkWidget *win;
@@ -42,24 +42,18 @@ enum ViewColumns {
 };
 
 void fill_recursively(app *a, const DirectoryDisplayInfo *di, GtkTreeIter *parent) {
-    for(const auto &d : di->dirs) {
+    for (const auto &d : di->dirs) {
         GtkTreeIter i;
         gtk_tree_store_append(a->treestore, &i, parent);
-        gtk_tree_store_set(a->treestore, &i,
-                NAME_COLUMN, d.dirname.c_str(),
-                PACKED_SIZE_COLUMN, 0,
-                UNPACKED_SIZE_COLUMN, 0,
-                -1);
+        gtk_tree_store_set(a->treestore, &i, NAME_COLUMN, d.dirname.c_str(), PACKED_SIZE_COLUMN, 0,
+                           UNPACKED_SIZE_COLUMN, 0, -1);
         fill_recursively(a, &d, &i);
     }
-    for(const auto &f : di->files) {
+    for (const auto &f : di->files) {
         GtkTreeIter i;
         gtk_tree_store_append(a->treestore, &i, parent);
-        gtk_tree_store_set(a->treestore, &i,
-                NAME_COLUMN, f.fname.c_str(),
-                PACKED_SIZE_COLUMN, f.compressed_size,
-                UNPACKED_SIZE_COLUMN, f.uncompressed_size,
-                -1);
+        gtk_tree_store_set(a->treestore, &i, NAME_COLUMN, f.fname.c_str(), PACKED_SIZE_COLUMN,
+                           f.compressed_size, UNPACKED_SIZE_COLUMN, f.uncompressed_size, -1);
     }
 }
 
@@ -70,17 +64,15 @@ void reset_model(app *a) {
 }
 
 void open_file(GtkMenuItem *, gpointer data) {
-    app *a = reinterpret_cast<app*>(data);
-    GtkWidget *fc = gtk_file_chooser_dialog_new("Select ZIP file", GTK_WINDOW(a->win),
-                GTK_FILE_CHOOSER_ACTION_OPEN,
-                "_Cancel", GTK_RESPONSE_CANCEL,
-                "_Open", GTK_RESPONSE_ACCEPT,
-                nullptr);
+    app *a = reinterpret_cast<app *>(data);
+    GtkWidget *fc = gtk_file_chooser_dialog_new(
+        "Select ZIP file", GTK_WINDOW(a->win), GTK_FILE_CHOOSER_ACTION_OPEN, "_Cancel",
+        GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, nullptr);
     GtkFileFilter *filter = gtk_file_filter_new();
     gtk_file_filter_add_pattern(filter, "*.zip");
     gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(fc), filter);
     auto res = gtk_dialog_run(GTK_DIALOG(fc));
-    if(res == GTK_RESPONSE_ACCEPT) {
+    if (res == GTK_RESPONSE_ACCEPT) {
         auto filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(fc));
         a->zfile.reset(new ZipFile(filename));
         g_free(filename);
@@ -90,35 +82,30 @@ void open_file(GtkMenuItem *, gpointer data) {
 }
 
 gboolean unpack_timeout_func(gpointer data) {
-    app *a = reinterpret_cast<app*>(data);
+    app *a = reinterpret_cast<app *>(data);
     auto finished = a->tc->finished();
     auto total = a->tc->total();
-    if(a->tc->state() != TASK_RUNNING) {
+    if (a->tc->state() != TASK_RUNNING) {
         gtk_widget_hide(a->unpack_dialog);
         return FALSE;
     }
-    double fraction = ((double) finished) / total;
+    double fraction = ((double)finished) / total;
     gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(a->unpack_progress), fraction);
     return TRUE;
 }
 
 void unpack_current(GtkMenuItem *, gpointer data) {
-    app *a = reinterpret_cast<app*>(data);
+    app *a = reinterpret_cast<app *>(data);
     std::string unpack_dir;
     int num_threads = std::max((int)std::thread::hardware_concurrency(), 1);
-    if(!a->zfile) {
+    if (!a->zfile) {
         return;
     }
-    GtkWidget *dc = gtk_file_chooser_dialog_new("Output directory",
-            GTK_WINDOW(a->win),
-            GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
-            "_Cancel",
-            GTK_RESPONSE_CANCEL,
-            "_Open",
-            GTK_RESPONSE_ACCEPT,
-            nullptr);
+    GtkWidget *dc = gtk_file_chooser_dialog_new(
+        "Output directory", GTK_WINDOW(a->win), GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER, "_Cancel",
+        GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, nullptr);
     auto res = gtk_dialog_run(GTK_DIALOG(dc));
-    if(res == GTK_RESPONSE_ACCEPT) {
+    if (res == GTK_RESPONSE_ACCEPT) {
         char *dirname = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dc));
         gtk_widget_destroy(dc);
         unpack_dir = dirname;
@@ -134,10 +121,9 @@ void unpack_current(GtkMenuItem *, gpointer data) {
 }
 
 void stop_unpack(GtkDialog *, gint, gpointer data) {
-    app *a = reinterpret_cast<app*>(data);
+    app *a = reinterpret_cast<app *>(data);
     a->tc->stop();
 }
-
 
 void buildgui(app &a) {
     a.win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -166,15 +152,18 @@ void buildgui(app &a) {
     // Treeview.
     a.treestore = gtk_tree_store_new(N_COLUMNS, G_TYPE_STRING, G_TYPE_INT64, G_TYPE_INT64);
     a.treeview = gtk_tree_view_new_with_model(GTK_TREE_MODEL(a.treestore));
-    gtk_tree_view_append_column(GTK_TREE_VIEW(a.treeview),
-            gtk_tree_view_column_new_with_attributes("Filename",
-                    gtk_cell_renderer_text_new(), "text", NAME_COLUMN, nullptr));
-    gtk_tree_view_append_column(GTK_TREE_VIEW(a.treeview),
-            gtk_tree_view_column_new_with_attributes("Packed size",
-                    gtk_cell_renderer_text_new(), "text", PACKED_SIZE_COLUMN, nullptr));
-    gtk_tree_view_append_column(GTK_TREE_VIEW(a.treeview),
-            gtk_tree_view_column_new_with_attributes("Unpacked size",
-                    gtk_cell_renderer_text_new(), "text", UNPACKED_SIZE_COLUMN, nullptr));
+    gtk_tree_view_append_column(
+        GTK_TREE_VIEW(a.treeview),
+        gtk_tree_view_column_new_with_attributes("Filename", gtk_cell_renderer_text_new(), "text",
+                                                 NAME_COLUMN, nullptr));
+    gtk_tree_view_append_column(
+        GTK_TREE_VIEW(a.treeview),
+        gtk_tree_view_column_new_with_attributes("Packed size", gtk_cell_renderer_text_new(),
+                                                 "text", PACKED_SIZE_COLUMN, nullptr));
+    gtk_tree_view_append_column(
+        GTK_TREE_VIEW(a.treeview),
+        gtk_tree_view_column_new_with_attributes("Unpacked size", gtk_cell_renderer_text_new(),
+                                                 "text", UNPACKED_SIZE_COLUMN, nullptr));
     GtkWidget *scroll = gtk_scrolled_window_new(nullptr, nullptr);
     gtk_container_add(GTK_CONTAINER(scroll), a.treeview);
     gtk_box_pack_start(GTK_BOX(a.box), scroll, TRUE, TRUE, 0);
@@ -183,15 +172,12 @@ void buildgui(app &a) {
     // Unpack progress bar dialog.
     a.unpack_progress = gtk_progress_bar_new();
 
-    a.unpack_dialog = gtk_dialog_new_with_buttons("Unpacking Zip file",
-            GTK_WINDOW(a.win),
-            GTK_DIALOG_MODAL,
-            "Cancel",
-            GTK_RESPONSE_REJECT,
-            nullptr);
+    a.unpack_dialog =
+        gtk_dialog_new_with_buttons("Unpacking Zip file", GTK_WINDOW(a.win), GTK_DIALOG_MODAL,
+                                    "Cancel", GTK_RESPONSE_REJECT, nullptr);
     g_signal_connect(a.unpack_dialog, "response", G_CALLBACK(stop_unpack), &a);
     gtk_box_pack_start(GTK_BOX(gtk_dialog_get_content_area(GTK_DIALOG(a.unpack_dialog))),
-            a.unpack_progress, TRUE, TRUE, 0);
+                       a.unpack_progress, TRUE, TRUE, 0);
 }
 
 int main(int argc, char **argv) {

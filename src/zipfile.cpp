@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Jussi Pakkanen.
+ * Copyright (C) 2016-2019 Jussi Pakkanen.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of version 3, or (at your option) any later version,
@@ -15,28 +15,28 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include"zipfile.h"
-#include"utils.h"
-#include"fileutils.h"
-#include"mmapper.h"
-#include"naturalorder.h"
-#include<portable_endian.h>
+#include "zipfile.h"
+#include "fileutils.h"
+#include "mmapper.h"
+#include "naturalorder.h"
+#include "utils.h"
+#include <portable_endian.h>
 #ifdef _WIN32
-#include<winsock2.h>
-#include<windows.h>
+#include <windows.h>
+#include <winsock2.h>
 #else
-#include<sys/stat.h>
-#include<fcntl.h>
-#include<unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #endif
-#include<cstdio>
-#include<cerrno>
-#include<cstring>
-#include<stdexcept>
-#include<future>
-#include<thread>
-#include<algorithm>
 #include "decompress.h"
+#include <algorithm>
+#include <cerrno>
+#include <cstdio>
+#include <cstring>
+#include <future>
+#include <stdexcept>
+#include <thread>
 
 #ifndef _WIN32
 using std::max;
@@ -44,45 +44,47 @@ using std::max;
 
 namespace {
 
-void unpack_zip64_sizes(const std::string &extra_field, uint64_t &compressed_size, uint64_t &uncompressed_size) {
+void unpack_zip64_sizes(const std::string &extra_field, uint64_t &compressed_size,
+                        uint64_t &uncompressed_size) {
     size_t offset = 0;
-    while(offset < extra_field.size()) {
-        uint16_t header_id = le16toh(*reinterpret_cast<const uint16_t*>(&extra_field[offset]));
-        offset+=2;
-        uint16_t data_size = le16toh(*reinterpret_cast<const uint16_t*>(&extra_field[offset]));
-        offset+=2;
-        if(header_id == ZIP_EXTRA_ZIP64) {
-            uncompressed_size = le64toh(*reinterpret_cast<const uint64_t*>(&extra_field[offset]));
+    while (offset < extra_field.size()) {
+        uint16_t header_id = le16toh(*reinterpret_cast<const uint16_t *>(&extra_field[offset]));
+        offset += 2;
+        uint16_t data_size = le16toh(*reinterpret_cast<const uint16_t *>(&extra_field[offset]));
+        offset += 2;
+        if (header_id == ZIP_EXTRA_ZIP64) {
+            uncompressed_size = le64toh(*reinterpret_cast<const uint64_t *>(&extra_field[offset]));
             offset += 8;
-            compressed_size = le64toh(*reinterpret_cast<const uint64_t*>(&extra_field[offset]));
+            compressed_size = le64toh(*reinterpret_cast<const uint64_t *>(&extra_field[offset]));
             return;
         }
         offset += data_size;
     }
-    throw std::runtime_error("Entry extra field did not contain ZIP64 extension, file can not be parsed.");
+    throw std::runtime_error(
+        "Entry extra field did not contain ZIP64 extension, file can not be parsed.");
 }
 
 void unpack_unix(const std::string &extra, unixextra &unix) {
     size_t offset = 0;
-    while(offset < extra.size()) {
-        if(offset + 4 >= extra.size()) {
+    while (offset < extra.size()) {
+        if (offset + 4 >= extra.size()) {
             throw std::runtime_error("Malformed extra data.");
         }
-        uint16_t header_id = le16toh(*reinterpret_cast<const uint16_t*>(&extra.at(offset)));
-        offset+=2;
-        uint16_t data_size = le16toh(*reinterpret_cast<const uint16_t*>(&extra.at(offset)));
-        offset+=2;
+        uint16_t header_id = le16toh(*reinterpret_cast<const uint16_t *>(&extra.at(offset)));
+        offset += 2;
+        uint16_t data_size = le16toh(*reinterpret_cast<const uint16_t *>(&extra.at(offset)));
+        offset += 2;
         auto extra_end = offset + data_size;
-        if(header_id == ZIP_EXTRA_UNIX) {
-            unix.atime = le32toh(*reinterpret_cast<const uint32_t*>(&extra.at(offset)));
+        if (header_id == ZIP_EXTRA_UNIX) {
+            unix.atime = le32toh(*reinterpret_cast<const uint32_t *>(&extra.at(offset)));
             offset += 4;
-            unix.mtime = le32toh(*reinterpret_cast<const uint32_t*>(&extra.at(offset)));
+            unix.mtime = le32toh(*reinterpret_cast<const uint32_t *>(&extra.at(offset)));
             offset += 4;
-            unix.uid = le16toh(*reinterpret_cast<const uint16_t*>(&extra.at(offset)));
+            unix.uid = le16toh(*reinterpret_cast<const uint16_t *>(&extra.at(offset)));
             offset += 2;
-            unix.gid = le16toh(*reinterpret_cast<const uint16_t*>(&extra.at(offset)));
+            unix.gid = le16toh(*reinterpret_cast<const uint16_t *>(&extra.at(offset)));
             offset += 2;
-            if(offset > extra_end || extra_end > extra.size()) {
+            if (offset > extra_end || extra_end > extra.size()) {
                 throw std::runtime_error("Malformed Unix extra data.");
             }
             unix.data = std::string(&extra[offset], extra[extra_end]);
@@ -94,10 +96,10 @@ void unpack_unix(const std::string &extra, unixextra &unix) {
 }
 
 void check_filename(const std::string &fname) {
-    if(fname.size() == 0) {
+    if (fname.size() == 0) {
         throw std::runtime_error("Empty filename in directory");
     }
-    if(is_absolute_path(fname)) {
+    if (is_absolute_path(fname)) {
         throw std::runtime_error("Archive has an absolute filename which is forbidden.");
     }
 }
@@ -117,7 +119,7 @@ localheader read_local_entry(File &f) {
     extra_length = f.read16le();
     h.fname = f.read(fname_length);
     h.extra = f.read(extra_length);
-    if(h.compressed_size == 0xFFFFFFFF || h.uncompressed_size == 0xFFFFFFFF) {
+    if (h.compressed_size == 0xFFFFFFFF || h.uncompressed_size == 0xFFFFFFFF) {
         unpack_zip64_sizes(h.extra, h.compressed_size, h.uncompressed_size);
     }
     unpack_unix(h.extra, h.unix);
@@ -188,18 +190,18 @@ endrecord read_end_record(File &f) {
     return el;
 }
 
-void wait_for_slot(std::vector<std::future<UnpackResult>> &entries,
-                   const int num_threads,
+void wait_for_slot(std::vector<std::future<UnpackResult>> &entries, const int num_threads,
                    TaskControl &tc) {
-    if((int)entries.size() < num_threads)
+    if ((int)entries.size() < num_threads)
         return;
-    while(true) {
-        auto finished = std::find_if(entries.begin(), entries.end(), [](const std::future<UnpackResult> &e) {
-            return e.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
-        });
-        if(finished != entries.end()) {
+    while (true) {
+        auto finished =
+            std::find_if(entries.begin(), entries.end(), [](const std::future<UnpackResult> &e) {
+                return e.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
+            });
+        if (finished != entries.end()) {
             auto r = finished->get();
-            if(r.success) {
+            if (r.success) {
                 tc.add_success(r.msg);
             } else {
                 tc.add_failure(r.msg);
@@ -207,7 +209,7 @@ void wait_for_slot(std::vector<std::future<UnpackResult>> &entries,
             entries.erase(finished);
             return;
         }
-        if(tc.should_stop()) {
+        if (tc.should_stop()) {
             return;
         }
         std::this_thread::yield();
@@ -215,23 +217,25 @@ void wait_for_slot(std::vector<std::future<UnpackResult>> &entries,
 }
 
 void order_entries(DirectoryDisplayInfo &d) {
-    std::sort(d.dirs.begin(), d.dirs.end(), [](const DirectoryDisplayInfo &d1, const DirectoryDisplayInfo &d2) {
-        return natural_less(d1.dirname, d2.dirname);
-    });
-    std::sort(d.files.begin(), d.files.end(), [](const FileDisplayInfo &f1, const FileDisplayInfo &f2) {
-        return natural_less(f1.fname, f2.fname);
-    });
-    for(auto &de : d.dirs) {
+    std::sort(d.dirs.begin(), d.dirs.end(),
+              [](const DirectoryDisplayInfo &d1, const DirectoryDisplayInfo &d2) {
+                  return natural_less(d1.dirname, d2.dirname);
+              });
+    std::sort(d.files.begin(), d.files.end(),
+              [](const FileDisplayInfo &f1, const FileDisplayInfo &f2) {
+                  return natural_less(f1.fname, f2.fname);
+              });
+    for (auto &de : d.dirs) {
         order_entries(de);
     }
 }
 
-}
+} // namespace
 
 ZipFile::ZipFile(const char *fname) : zipfile(fname, "rb") {
     readLocalFileHeaders();
     readCentralDirectory();
-    if(entries.size() != centrals.size()) {
+    if (entries.size() != centrals.size()) {
         std::string msg("Mismatch. File has ");
         msg += std::to_string(entries.size());
         msg += " local entries but ";
@@ -240,22 +244,23 @@ ZipFile::ZipFile(const char *fname) : zipfile(fname, "rb") {
         throw std::runtime_error(msg);
     }
     auto id = zipfile.read32le();
-    if(id == ZIP64_CENTRAL_END_SIG) {
+    if (id == ZIP64_CENTRAL_END_SIG) {
         z64end = read_z64_central_end(zipfile);
-        if(z64end.total_entries != entries.size()) {
-            throw std::runtime_error("File is broken, zip64 directory has incorrect number of entries.");
+        if (z64end.total_entries != entries.size()) {
+            throw std::runtime_error(
+                "File is broken, zip64 directory has incorrect number of entries.");
         }
         id = zipfile.read32le();
-        if(id == ZIP64_CENTRAL_LOCATOR_SIG) {
+        if (id == ZIP64_CENTRAL_LOCATOR_SIG) {
             z64loc = read_z64_locator(zipfile);
             id = zipfile.read32le();
         }
     }
-    if(id != CENTRAL_END_SIG) {
+    if (id != CENTRAL_END_SIG) {
         throw std::runtime_error("Zip file broken, missing end of central directory.");
     }
     endloc = read_end_record(zipfile);
-    if(endloc.total_entries != 0xFFFF && endloc.total_entries != entries.size()) {
+    if (endloc.total_entries != 0xFFFF && endloc.total_entries != entries.size()) {
         throw std::runtime_error("Zip file broken, end record has incorrect directory size.");
     }
     zipfile.seek(0, SEEK_END);
@@ -263,36 +268,37 @@ ZipFile::ZipFile(const char *fname) : zipfile(fname, "rb") {
 }
 
 ZipFile::~ZipFile() {
-    if(t) {
+    if (t) {
         t->join();
     }
 }
 
 void ZipFile::readLocalFileHeaders() {
-    while(true) {
+    while (true) {
         auto curloc = zipfile.tell();
         uint32_t head = zipfile.read32le();
-        if(head != LOCAL_SIG) {
+        if (head != LOCAL_SIG) {
             zipfile.seek(curloc);
             break;
         }
         entries.emplace_back(read_local_entry(zipfile));
-        if(entries.back().gp_bitflag & 1) {
-            throw std::runtime_error("This file is encrypted. Encrypted ZIP archives are not supported.");
+        if (entries.back().gp_bitflag & 1) {
+            throw std::runtime_error(
+                "This file is encrypted. Encrypted ZIP archives are not supported.");
         }
         data_offsets.push_back(zipfile.tell());
         zipfile.seek(entries.back().compressed_size, SEEK_CUR);
-        if(entries.back().gp_bitflag & (1<<2)) {
-            zipfile.seek(3*4, SEEK_CUR);
+        if (entries.back().gp_bitflag & (1 << 2)) {
+            zipfile.seek(3 * 4, SEEK_CUR);
         }
     }
 }
 
 void ZipFile::readCentralDirectory() {
-    while(true) {
+    while (true) {
         auto curloc = zipfile.tell();
         uint32_t head = zipfile.read32le();
-        if(head != CENTRAL_SIG) {
+        if (head != CENTRAL_SIG) {
             zipfile.seek(curloc);
             break;
         }
@@ -300,29 +306,31 @@ void ZipFile::readCentralDirectory() {
     }
 }
 
-TaskControl* ZipFile::unzip(const std::string &prefix, int num_threads) const {
-    if(num_threads < 0) {
+TaskControl *ZipFile::unzip(const std::string &prefix, int num_threads) const {
+    if (num_threads < 0) {
         num_threads = max((int)std::thread::hardware_concurrency(), 1);
     }
-    if(tc.state() != TASK_NOT_STARTED) {
+    if (tc.state() != TASK_NOT_STARTED) {
         throw std::logic_error("Tried to start an already used packing process.");
     }
     int fd = zipfile.fileno();
-    if(fd < 0) {
+    if (fd < 0) {
         throw_system("Could not open zip file:");
     }
 
     tc.reserve(entries.size());
     tc.set_state(TASK_RUNNING);
-    t.reset(new std::thread([this](const std::string prefix, int num_threads) {
-        try {
-            this->run(prefix, num_threads);
-        } catch(const std::exception &e) {
-            printf("Fail: %s\n", e.what());
-        } catch(...) {
-            printf("Unknown fail.\n");
-        }
-    }, prefix, num_threads));
+    t.reset(new std::thread(
+        [this](const std::string prefix, int num_threads) {
+            try {
+                this->run(prefix, num_threads);
+            } catch (const std::exception &e) {
+                printf("Fail: %s\n", e.what());
+            } catch (...) {
+                printf("Unknown fail.\n");
+            }
+        },
+        prefix, num_threads));
     return &tc;
 }
 
@@ -332,23 +340,20 @@ void ZipFile::run(const std::string &prefix, int num_threads) const {
     unsigned char *file_start = map;
     std::vector<std::future<UnpackResult>> futures;
     futures.reserve(num_threads);
-    for(size_t i=0; i<entries.size(); i++) {
+    for (size_t i = 0; i < entries.size(); i++) {
         wait_for_slot(futures, num_threads, tc);
-        if(tc.should_stop()) {
+        if (tc.should_stop()) {
             break;
         }
-        auto unstoretask = [this, file_start, i, &prefix](){
-            return unpack_entry(prefix, entries[i],
-                                centrals[i],
-                                file_start + data_offsets[i],
-                                entries[i].compressed_size,
-                                tc);
+        auto unstoretask = [this, file_start, i, &prefix]() {
+            return unpack_entry(prefix, entries[i], centrals[i], file_start + data_offsets[i],
+                                entries[i].compressed_size, tc);
         };
         futures.emplace_back(std::async(std::launch::async, unstoretask));
     }
-    for(auto &f : futures) {
+    for (auto &f : futures) {
         auto r = f.get();
-        if(r.success) {
+        if (r.success) {
             tc.add_success(r.msg);
         } else {
             tc.add_failure(r.msg);
@@ -357,19 +362,19 @@ void ZipFile::run(const std::string &prefix, int num_threads) const {
     tc.set_state(TASK_FINISHED);
 }
 
-
 DirectoryDisplayInfo ZipFile::build_tree() const {
     DirectoryDisplayInfo root;
-    for(const auto &e : entries) {
+    for (const auto &e : entries) {
         DirectoryDisplayInfo *current = &root;
         std::string fname = e.fname;
         auto index = fname.find('/');
-        while(index != std::string::npos) {
+        while (index != std::string::npos) {
             std::string dirpart = fname.substr(0, index);
-            fname = fname.substr(index+1);
-            auto dir = std::find_if(current->dirs.begin(), current->dirs.end(),
-                    [&dirpart] (const DirectoryDisplayInfo &d) {return dirpart == d.dirname;});
-            if(dir != current->dirs.end()) {
+            fname = fname.substr(index + 1);
+            auto dir = std::find_if(
+                current->dirs.begin(), current->dirs.end(),
+                [&dirpart](const DirectoryDisplayInfo &d) { return dirpart == d.dirname; });
+            if (dir != current->dirs.end()) {
                 current = &(*dir);
             } else {
                 DirectoryDisplayInfo tmp;
@@ -379,7 +384,7 @@ DirectoryDisplayInfo ZipFile::build_tree() const {
             }
             index = fname.find('/');
         }
-        if(fname.empty()) {
+        if (fname.empty()) {
             // Zip files mark directory entries by ending them with a slash,
             // don't create a file entry.
             continue;
@@ -390,4 +395,3 @@ DirectoryDisplayInfo ZipFile::build_tree() const {
     order_entries(root);
     return root;
 }
-

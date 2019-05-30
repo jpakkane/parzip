@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Jussi Pakkanen.
+ * Copyright (C) 2016-2019 Jussi Pakkanen.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of version 3, or (at your option) any later version,
@@ -15,20 +15,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include"taskcontrol.h"
-#include<stdexcept>
+#include "taskcontrol.h"
+#include <stdexcept>
 
-TaskControl::TaskControl() : cur_state(TASK_NOT_STARTED),
-    num_success(0),
-    num_failures(0),
-    total_tasks(0) {
-}
+TaskControl::TaskControl()
+    : cur_state(TASK_NOT_STARTED), num_success(0), num_failures(0), total_tasks(0) {}
 
 void TaskControl::reserve(size_t num_entries) {
-    if(cur_state != TASK_NOT_STARTED) {
+    if (cur_state != TASK_NOT_STARTED) {
         throw std::logic_error("Called reserve after task has started.");
     }
-    total_tasks = (int) num_entries;
+    total_tasks = (int)num_entries;
     results.reserve(total_tasks);
 }
 
@@ -93,7 +90,7 @@ bool TaskControl::should_stop() const {
 
 void TaskControl::throw_if_stopped() const {
     std::lock_guard<std::mutex> l(m);
-    if(stopped) {
+    if (stopped) {
         throw std::runtime_error("Stopping task evaluation.");
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Jussi Pakkanen.
+ * Copyright (C) 2016-2019 Jussi Pakkanen.
  *
  * This program is free software; you can redistribute it and/or modify it under
  * the terms of version 3, or (at your option) any later version,
@@ -17,12 +17,12 @@
 
 #pragma once
 
-#include"zipdefs.h"
-#include"file.h"
-#include"taskcontrol.h"
-#include<string>
-#include<vector>
-#include<thread>
+#include "file.h"
+#include "taskcontrol.h"
+#include "zipdefs.h"
+#include <string>
+#include <thread>
+#include <vector>
 
 struct FileDisplayInfo {
     std::string fname;
@@ -44,14 +44,13 @@ public:
 
     size_t size() const { return entries.size(); }
 
-    TaskControl* unzip(const std::string &prefix, int num_threads) const;
+    TaskControl *unzip(const std::string &prefix, int num_threads) const;
 
     const std::vector<localheader> localheaders() const { return entries; }
 
     DirectoryDisplayInfo build_tree() const;
 
 private:
-
     void run(const std::string &prefix, int num_threads) const;
 
     void readLocalFileHeaders();
