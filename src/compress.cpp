@@ -158,11 +158,11 @@ compressresult compress_lzma(const fileinfo &fi, ByteQueue &queue, const TaskCon
         // This is what Python's lzma lib does. Copy it
         // without understanding.
         write_byte = 9;
-        queue.push((char*)&write_byte, sizeof(write_byte));
+        queue.push((char *)&write_byte, sizeof(write_byte));
         write_byte = 4;
-        queue.push((char*)&write_byte, sizeof(write_byte));
+        queue.push((char *)&write_byte, sizeof(write_byte));
         uint16_t lefilter = htole16(filter_size);
-        queue.push((char*)&lefilter, sizeof(lefilter));
+        queue.push((char *)&lefilter, sizeof(lefilter));
         queue.push(x.data(), x.size());
     }
     std::unique_ptr<lzma_stream, void (*)(lzma_stream *)> lcloser(&strm, lzma_end);
@@ -241,7 +241,7 @@ compressresult create_symlink(const fileinfo &fi, ByteQueue &queue) {
     // programs put it in the file data. Let's do both to be sure.
     auto final_fi = fi;
     final_fi.ue.data.insert(0, (const char *)buf.get());
-    std::string edata{(char*)buf.get()};
+    std::string edata{(char *)buf.get()};
     compressresult result{FILE_ENTRY, CRC32(buf.get(), r), ZIP_NO_COMPRESSION, edata};
     queue.push(edata.data(), edata.size());
     return result;
@@ -270,7 +270,8 @@ compressresult create_chrdev(const fileinfo &fi, ByteQueue &) {
 
 } // namespace
 
-compressresult compress_entry(const fileinfo &f, ByteQueue &queue, bool use_lzma, const TaskControl &tc) {
+compressresult compress_entry(const fileinfo &f, ByteQueue &queue, bool use_lzma,
+                              const TaskControl &tc) {
     if (S_ISREG(f.mode)) {
         if (f.fsize < TOO_SMALL_FOR_LZMA) {
             return store_file(f, queue);

@@ -33,7 +33,7 @@ public:
     TaskControl *create(const std::vector<fileinfo> &files, int num_threads);
 
 private:
-    void run(const std::vector<fileinfo> &files, int num_threads);
+    void run(const std::vector<fileinfo> &files, const int num_threads);
 
     std::unique_ptr<std::thread> t;
     std::string fname;

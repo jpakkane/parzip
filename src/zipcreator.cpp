@@ -46,13 +46,11 @@ struct CompressionTask {
     ByteQueue queue;
     std::future<compressresult> result;
 
-    explicit CompressionTask(const fileinfo fi, const int64_t queue_size): fi(fi), queue(queue_size) {
-    }
-
+    explicit CompressionTask(const fileinfo fi, const int64_t queue_size)
+        : fi(fi), queue(queue_size) {}
 };
 
 typedef std::vector<std::unique_ptr<CompressionTask>> task_array;
-
 
 void write_file(ByteQueue &q, File &ofile, const localheader &lh) {
     ofile.write32le(LOCAL_SIG);
@@ -71,7 +69,7 @@ void write_file(ByteQueue &q, File &ofile, const localheader &lh) {
     do {
         auto buf = q.pop();
         ofile.write(buf.data(), buf.size());
-    } while(q.state() != QueueState::SHUTDOWN);
+    } while (q.state() != QueueState::SHUTDOWN);
     auto final_buf = q.pop();
     ofile.write(final_buf.data(), final_buf.size());
 }
@@ -176,7 +174,7 @@ centralheader write_entry(File &ofile, CompressionTask &t) {
     write_file(t.queue, ofile, lh);
     const auto end_location = ofile.tell();
     const auto compression_result = t.result.get();
-    if(!compression_result.additional_unix_extra_data.empty()) {
+    if (!compression_result.additional_unix_extra_data.empty()) {
         t.fi.ue.data.insert(0, compression_result.additional_unix_extra_data.c_str());
     }
     compressed_size = end_location - start_location;
@@ -228,12 +226,11 @@ void handle_future(File &ofile, CompressionTask &t, std::vector<centralheader> &
     }
 }
 
-bool pop_with_state(File &ofile, task_array &tasks,
-                std::vector<centralheader> &chs, TaskControl &tc, const QueueState state) {
-    auto full_entry = std::find_if(tasks.begin(), tasks.end(), [state](const auto &up) {
-        return up->queue.state() == state;
-    });
-    if(full_entry != tasks.end()) {
+bool pop_with_state(File &ofile, task_array &tasks, std::vector<centralheader> &chs,
+                    TaskControl &tc, const QueueState state) {
+    auto full_entry = std::find_if(tasks.begin(), tasks.end(),
+                                   [state](const auto &up) { return up->queue.state() == state; });
+    if (full_entry != tasks.end()) {
         handle_future(ofile, **full_entry, chs, tc);
         tasks.erase(full_entry);
         return true;
@@ -241,15 +238,14 @@ bool pop_with_state(File &ofile, task_array &tasks,
     return false;
 }
 
-void pop_future(File &ofile, task_array &tasks,
-                std::vector<centralheader> &chs, TaskControl &tc) {
-    while(true) {
-        if(tc.should_stop()) {
+void pop_future(File &ofile, task_array &tasks, std::vector<centralheader> &chs, TaskControl &tc) {
+    while (true) {
+        if (tc.should_stop()) {
             return;
         }
-        if(pop_with_state(ofile, tasks, chs, tc, QueueState::FULL))
+        if (pop_with_state(ofile, tasks, chs, tc, QueueState::FULL))
             return;
-        if(pop_with_state(ofile, tasks, chs, tc, QueueState::SHUTDOWN))
+        if (pop_with_state(ofile, tasks, chs, tc, QueueState::SHUTDOWN))
             return;
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
@@ -310,15 +306,16 @@ TaskControl *ZipCreator::create(const std::vector<fileinfo> &files, int num_thre
     return &tc;
 }
 
-void launch_task(task_array &tasks, const fileinfo &f, const int64_t buffer_size, bool use_lzma, TaskControl &tc) {
+void launch_task(task_array &tasks, const fileinfo &f, const int64_t buffer_size, bool use_lzma,
+                 TaskControl &tc) {
     auto t = std::make_unique<CompressionTask>(f, buffer_size);
     ByteQueue *bq_ptr = &t->queue;
-    t->result = std::async(std::launch::async, [&f, bq_ptr, use_lzma, &tc] () -> compressresult {
+    t->result = std::async(std::launch::async, [&f, bq_ptr, use_lzma, &tc]() -> compressresult {
         try {
             compressresult result = compress_entry(f, *bq_ptr, use_lzma, tc);
             bq_ptr->shutdown();
             return result;
-        } catch(...) {
+        } catch (...) {
             bq_ptr->shutdown();
             throw;
         }
@@ -326,29 +323,28 @@ void launch_task(task_array &tasks, const fileinfo &f, const int64_t buffer_size
     tasks.push_back(std::move(t));
 }
 
-
-void ZipCreator::run(const std::vector<fileinfo> &files, int num_threads) {
+void ZipCreator::run(const std::vector<fileinfo> &files, const int num_threads) {
 #ifdef __linux__
     const bool use_lzma = true; // Temporary hack until lzma is fixed on OSX and Windows.
 #else
     const bool use_lzma = false;
 #endif
-    const size_t max_tasks = std::thread::hardware_concurrency();
     const int64_t queue_size = sizeof(void *) > 4 ? 1024 * 1024 * 1024 : 10 * 1024 * 2014;
     File ofile(fname, "wb");
     endrecord ed;
     std::vector<centralheader> chs;
     task_array tasks;
-    tasks.reserve(files.size());
+    assert(num_threads > 0);
+    tasks.reserve(num_threads);
     size_t i = 0;
     /*
      * Try to always keep as many compression jobs running as there are processors.
      *
      * - a task that is finished is written to the output file
      *
-     * - a task that has filled its buffer is written to the output file
+     * - a task that has filled its buffer is written to the output file in a streaming fashion
      *
-     * - only one file is being written to the output file
+     * - only one file is being written to the output file at a time
      *
      * The problem comes when a huge file blocks and must be written to the result file.
      * In this case ongoing tasks either finish or fill their buffer and wait. New tasks
@@ -358,13 +354,13 @@ void ZipCreator::run(const std::vector<fileinfo> &files, int num_threads) {
         if (tc.should_stop()) {
             break;
         }
-        while(tasks.size() >= max_tasks) {
+        while ((int)tasks.size() >= num_threads) {
             i++;
             pop_future(ofile, tasks, chs, tc);
         }
         launch_task(tasks, f, queue_size, use_lzma, tc);
     }
-    while (i < tasks.size()) {
+    while (!tasks.empty()) {
         i++;
         pop_future(ofile, tasks, chs, tc);
     }
