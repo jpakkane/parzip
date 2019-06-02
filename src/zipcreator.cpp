@@ -52,7 +52,7 @@ struct CompressionTask {
 
 typedef std::vector<std::unique_ptr<CompressionTask>> task_array;
 
-void write_file(ByteQueue &q, File &ofile, const localheader &lh) {
+void write_localheader(File &ofile, const localheader &lh) {
     ofile.write32le(LOCAL_SIG);
     ofile.write16le(lh.needed_version);
     ofile.write16le(lh.gp_bitflag);
@@ -66,6 +66,9 @@ void write_file(ByteQueue &q, File &ofile, const localheader &lh) {
     ofile.write16le(lh.extra.size());
     ofile.write(lh.fname);
     ofile.write(lh.extra);
+}
+
+void write_file(ByteQueue &q, File &ofile) {
     do {
         auto buf = q.pop();
         ofile.write(buf.data(), buf.size());
@@ -168,16 +171,12 @@ centralheader write_entry(File &ofile, CompressionTask &t) {
     const fileinfo &i = t.fi;
     uint64_t local_header_offset = ofile.tell();
     uint64_t uncompressed_size = i.fsize;
-    uint64_t compressed_size;
+    uint64_t compressed_size = 0xFFFFFFFF;
     lh.fname = i.fname;
-    const auto start_location = ofile.tell();
-    write_file(t.queue, ofile, lh);
-    const auto end_location = ofile.tell();
     const auto compression_result = t.result.get();
     if (!compression_result.additional_unix_extra_data.empty()) {
         t.fi.ue.data.insert(0, compression_result.additional_unix_extra_data.c_str());
     }
-    compressed_size = end_location - start_location;
     if (compression_result.entrytype == DIRECTORY_ENTRY) {
         if (lh.fname.back() != '/') {
             lh.fname += '/';
@@ -191,8 +190,22 @@ centralheader write_entry(File &ofile, CompressionTask &t) {
     lh.last_mod_time = 0;
     lh.crc32 = compression_result.crc32;
     lh.compressed_size = lh.uncompressed_size = 0xFFFFFFFF;
+    // Write fake data because the local header must be written before the data.
+    // But we don't know the final data size until all data has been read from the
+    // ByteQueue.
     lh.extra = pack_zip64(uncompressed_size, compressed_size, local_header_offset);
-    lh.extra += pack_unix_extra(i.ue);
+    lh.extra += pack_unix_extra(t.fi.ue);
+    write_localheader(ofile, lh);
+    auto data_start_loc = ofile.tell();
+    write_file(t.queue, ofile);
+    auto data_end_loc = ofile.tell();
+
+    // Fix the header by rewriting it.
+    lh.extra = pack_zip64(uncompressed_size, data_end_loc - data_start_loc, local_header_offset);
+    lh.extra += pack_unix_extra(t.fi.ue);
+    ofile.seek(local_header_offset, SEEK_SET);
+    write_localheader(ofile, lh);
+    ofile.seek(data_end_loc, SEEK_SET);
 
     ch.version_made_by = MADE_BY_UNIX << 8 | NEEDED_VERSION;
     ch.version_needed = lh.needed_version;
