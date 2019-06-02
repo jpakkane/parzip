@@ -260,32 +260,8 @@ void pop_future(File &ofile, task_array &tasks, std::vector<centralheader> &chs,
             return;
         if (pop_with_state(ofile, tasks, chs, tc, QueueState::SHUTDOWN))
             return;
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
-}
-
-bool ready(const std::vector<std::future<compressresult>> &futures, size_t i) {
-    return futures[i].wait_for(std::chrono::milliseconds(0)) == std::future_status::ready;
-}
-
-void count_states(const std::vector<std::future<compressresult>> &futures, size_t i, int &running,
-                  int &finished) {
-    running = 0;
-    finished = 0;
-    for (size_t j = i; j < futures.size(); j++) {
-        if (ready(futures, j)) {
-            finished++;
-        } else {
-            running++;
-        }
-    }
-}
-
-/*
- * Spawning full async for small operations is wasteful.
- */
-bool handle_inthread(const fileinfo &fi) {
-    return !(is_file(fi) && fi.fsize >= TOO_SMALL_FOR_LZMA);
 }
 
 } // namespace
@@ -349,7 +325,6 @@ void ZipCreator::run(const std::vector<fileinfo> &files, const int num_threads) 
     task_array tasks;
     assert(num_threads > 0);
     tasks.reserve(num_threads);
-    size_t i = 0;
     /*
      * Try to always keep as many compression jobs running as there are processors.
      *
@@ -368,13 +343,11 @@ void ZipCreator::run(const std::vector<fileinfo> &files, const int num_threads) 
             break;
         }
         while ((int)tasks.size() >= num_threads) {
-            i++;
             pop_future(ofile, tasks, chs, tc);
         }
         launch_task(tasks, f, queue_size, use_lzma, tc);
     }
     while (!tasks.empty()) {
-        i++;
         pop_future(ofile, tasks, chs, tc);
     }
     if (chs.empty()) {
