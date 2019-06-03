@@ -17,8 +17,8 @@
 
 #if defined(_WIN32)
 #include <io.h>
-#include <windows.h>
 #include <winsock2.h>
+#include <windows.h>
 #else
 #include <fcntl.h>
 #include <sys/mman.h>

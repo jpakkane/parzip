@@ -21,6 +21,7 @@
 #include "mmapper.h"
 #include "taskcontrol.h"
 #include "utils.h"
+#include <portable_endian.h>
 
 #include <cstring>
 #include <sys/stat.h>
@@ -117,7 +118,7 @@ compressresult compress_zlib(const fileinfo &fi, ByteQueue &queue, const TaskCon
 }
 
 #ifdef _WIN32
-compressresult compress_lzma(const fileinfo &fi) {
+compressresult compress_lzma(const fileinfo &fi, ByteQueue &queue, const TaskControl &tc) {
     throw std::runtime_error("Liblzma does not work with VS.");
 }
 
@@ -248,6 +249,7 @@ compressresult create_symlink(const fileinfo &fi, ByteQueue &queue) {
 #endif
 }
 
+#ifndef _WIN32
 compressresult create_chrdev(const fileinfo &fi, ByteQueue &) {
     std::string buf(8, 'x');
     FILE *tf = tmpfile();
@@ -267,6 +269,7 @@ compressresult create_chrdev(const fileinfo &fi, ByteQueue &) {
                           ZIP_NO_COMPRESSION, ue_data};
     return result;
 }
+#endif
 
 } // namespace
 
@@ -284,9 +287,11 @@ compressresult compress_entry(const fileinfo &f, ByteQueue &queue, bool use_lzma
     if (S_ISLNK(f.mode)) {
         return create_symlink(f, queue);
     }
+#ifndef _WIN32
     if (S_ISCHR(f.mode)) {
         return create_chrdev(f, queue);
     }
+#endif
     std::string error("Unknown file type: ");
     error += f.fname;
     throw std::runtime_error(error);

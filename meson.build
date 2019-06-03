@@ -3,6 +3,8 @@ project('parzip', 'cpp',
   license : 'GPLv3+',
   default_options : ['cpp_std=c++14', 'warning_level=3'])
 
+#add_global_arguments('-DWIN32_LEAN_AND_MEAN', language: 'cpp')
+
 zdep = dependency('zlib', fallback : ['zlib', 'zlib_dep'])
 if host_machine.system() != 'windows'
   lzmadep = dependency('liblzma', fallback : ['liblzma', 'lzma_dep'])

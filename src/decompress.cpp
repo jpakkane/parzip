@@ -129,7 +129,8 @@ uint32_t inflate_to_file(const unsigned char *data_start, uint64_t data_size, FI
 }
 
 #ifdef _WIN32
-uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile) {
+uint32_t lzma_to_file(const unsigned char *data_start, uint64_t data_size, FILE *ofile,
+                      const TaskControl &tc) {
     throw std::runtime_error("LZMA not supported on Windows.");
 }
 

@@ -1,5 +1,5 @@
 if host_machine.system() == 'windows'
-  linkargs = 'Ws2_32.lib'
+  linkargs = ['Ws2_32.lib', '-lcomctl32']
 else
   linkargs = []
 endif

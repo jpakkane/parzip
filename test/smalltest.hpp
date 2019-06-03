@@ -20,9 +20,15 @@
 #pragma once
 
 #include <stdio.h>
+#ifdef _WIN32
+#define NORETURN
+#else
 #include <unistd.h>
+#define NORETURN __attribute__((noreturn))
+#endif
 
-static void __attribute__((noreturn)) st_die(const char *fname, const char *lname, int line_num) {
+
+static void NORETURN st_die(const char *fname, const char *lname, int line_num) {
     printf("FAIL:\n file: %s\n function: %s\n line: %d\n", fname, lname, line_num);
     fflush(stdout);
     fflush(stderr);
@@ -42,10 +48,16 @@ static void st_test_end(const char *test_func_name) {
 #define ST_STRINGIFY(x) #x
 #define ST_TOSTRING(x) ST_STRINGIFY(x)
 
+#ifdef _WIN32
+#define FUNCTION_NAME __FUNCTION__
+#else
+#define FUNCTION_NAME __PRETTY_FUNCTION__
+#endif
+
 #define ST_ASSERT(stmt)                                                                            \
     do {                                                                                           \
         if (!(stmt))                                                                               \
-            st_die(__FILE__, __PRETTY_FUNCTION__, __LINE__);                                       \
+            st_die(__FILE__, FUNCTION_NAME, __LINE__);                                       \
     } while (0);
 
 #define ST_TEST(func_name)                                                                         \
