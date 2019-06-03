@@ -341,7 +341,9 @@ void set_unix_permissions(const localheader &lh, const centralheader &ch,
         tb.modtime = lh.unix.mtime;
         utime(fname.c_str(), &tb);
     }
-    chown(fname.c_str(), lh.unix.uid, lh.unix.gid);
+    if(chown(fname.c_str(), lh.unix.uid, lh.unix.gid) <0) {
+        perror("Could not change owner/group info:");
+    }
 #endif
 }
 
