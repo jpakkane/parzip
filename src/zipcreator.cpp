@@ -327,7 +327,7 @@ void ZipCreator::run(const std::vector<fileinfo> &files, const int num_threads) 
 #else
     const bool use_lzma = false;
 #endif
-    const int64_t queue_size = sizeof(void *) > 4 ? 100 * 1024 * 1024 : 10 * 1024 * 2014;
+    const int64_t queue_size = sizeof(void *) > 4 ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
     File ofile(fname, "wb");
     endrecord ed;
     std::vector<centralheader> chs;
