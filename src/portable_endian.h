@@ -7,7 +7,7 @@
 
 #pragma once
 
-#if (defined(_WIN16) || defined(_WIN32) || defined(_WIN64))
+#if(defined(_WIN16) || defined(_WIN32) || defined(_WIN64))
 
 #define __WINDOWS_ZZZ__
 

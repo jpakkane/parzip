@@ -39,7 +39,7 @@ using std::min;
 void throw_system(const char *msg) {
     std::string error(msg);
     assert(errno != 0);
-    if (error.back() != ' ') {
+    if(error.back() != ' ') {
         error += ' ';
     }
     error += strerror(errno);
@@ -49,7 +49,7 @@ void throw_system(const char *msg) {
 uint32_t CRC32(const unsigned char *buf, uint64_t bufsize) {
     uint32_t crcvalue = crc32(0, Z_NULL, 0);
     const uint64_t blocksize = 1024 * 1024;
-    for (uint64_t offset = 0; offset < bufsize; offset += blocksize) {
+    for(uint64_t offset = 0; offset < bufsize; offset += blocksize) {
         crcvalue = crc32(crcvalue, buf + offset, min(blocksize, bufsize - offset));
     }
     return crcvalue;

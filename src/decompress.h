@@ -27,6 +27,9 @@ struct UnpackResult {
     std::string msg;
 };
 
-UnpackResult unpack_entry(const std::string &prefix, const localheader &lh, const centralheader &ch,
-                          const unsigned char *data_start, uint64_t data_size,
+UnpackResult unpack_entry(const std::string &prefix,
+                          const localheader &lh,
+                          const centralheader &ch,
+                          const unsigned char *data_start,
+                          uint64_t data_size,
                           const TaskControl &tc);

@@ -38,17 +38,17 @@ public:
     }
 
     void push(const char *data, int64_t inbuf_size) {
-        if (inbuf_size < 0) {
+        if(inbuf_size < 0) {
             throw std::logic_error("Negative value used for input buffer size.");
         }
         std::unique_lock<std::mutex> l(m);
-        if (st == QueueState::SHUTDOWN) {
+        if(st == QueueState::SHUTDOWN) {
             throw std::logic_error("Tried to push data to a closed queue.");
         }
-        if ((int64_t)buffer.size() + inbuf_size < buffer_size) {
+        if((int64_t)buffer.size() + inbuf_size < buffer_size) {
             buffer.insert(buffer.end(), data, data + inbuf_size);
             // Buffer did not get full here.
-            if (st == QueueState::EMPTY) {
+            if(st == QueueState::EMPTY) {
                 set_state(l, QueueState::HAS_DATA);
             }
             return;
@@ -65,7 +65,7 @@ public:
             std::unique_lock<std::mutex> l(m);
             rv.reserve(buffer_size);
             rv.swap(buffer);
-            if (st != QueueState::SHUTDOWN) {
+            if(st != QueueState::SHUTDOWN) {
                 set_state(l, QueueState::EMPTY);
             }
         }
@@ -74,7 +74,7 @@ public:
 
     void wait_until_full_or_shutdown() const {
         std::unique_lock<std::mutex> l(m);
-        while (!(st == QueueState::FULL || st == QueueState::SHUTDOWN)) {
+        while(!(st == QueueState::FULL || st == QueueState::SHUTDOWN)) {
             cv.wait(l);
         }
     }
@@ -96,25 +96,25 @@ public:
 private:
     void push_internal(std::unique_lock<std::mutex> &l, const char *data, int64_t inbuf_size) {
         int64_t pushed_so_far = 0;
-        while (pushed_so_far < inbuf_size) {
+        while(pushed_so_far < inbuf_size) {
             auto this_round_size =
                 std::min(buffer_size - (int64_t)buffer.size(), inbuf_size - pushed_so_far);
             auto start_point = data + pushed_so_far;
             auto end_point = start_point + this_round_size;
             buffer.insert(buffer.end(), start_point, end_point);
             pushed_so_far += this_round_size;
-            if ((int64_t)buffer.size() == queue_size()) {
+            if((int64_t)buffer.size() == queue_size()) {
                 set_state(l, QueueState::FULL);
-                if (pushed_so_far == inbuf_size) {
+                if(pushed_so_far == inbuf_size) {
                     // Everything is in but we don't need to write any more
                     // stuff. Return rather than blocking.
                     return;
                 }
                 // Wait until someone grabs buffer contents.
-                while (st == QueueState::FULL) {
+                while(st == QueueState::FULL) {
                     cv.wait(l);
                 }
-                if (st == QueueState::SHUTDOWN) {
+                if(st == QueueState::SHUTDOWN) {
                     return;
                 }
             } else {
@@ -127,11 +127,11 @@ private:
     // lock.
     void set_state(std::unique_lock<std::mutex> &, const QueueState new_state) {
         const bool should_notify = new_state != st;
-        if (st == QueueState::SHUTDOWN) {
+        if(st == QueueState::SHUTDOWN) {
             throw std::runtime_error("Trying to change the state of a closed queue.");
         }
         st = new_state;
-        if (should_notify) {
+        if(should_notify) {
             cv.notify_one();
         }
     }

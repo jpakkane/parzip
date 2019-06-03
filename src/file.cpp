@@ -24,7 +24,7 @@
 
 File::File(const std::string &fname, const char *mode) {
     f = fopen(fname.c_str(), mode);
-    if (!f) {
+    if(!f) {
         std::string msg("Could not open file ");
         msg += fname;
         msg += ":";
@@ -35,13 +35,13 @@ File::File(const std::string &fname, const char *mode) {
 File::File(FILE *opened) : f(opened) {}
 
 File::~File() {
-    if (f) {
+    if(f) {
         fclose(f);
     }
 }
 
 void File::close() {
-    if (f) {
+    if(f) {
         fclose(f);
         f = nullptr;
     }
@@ -67,8 +67,8 @@ int File::fileno() const { return ::fileno(f); }
 MMapper File::mmap() const { return MMapper(*this); }
 
 void File::read(void *buf, size_t bufsize) {
-    if (fread(buf, 1, bufsize, f) != bufsize) {
-        if (feof(f)) {
+    if(fread(buf, 1, bufsize, f) != bufsize) {
+        if(feof(f)) {
             throw std::runtime_error("Tried to read past end of file.");
         }
         throw_system("Could not read data:");
@@ -125,14 +125,14 @@ std::string File::read(size_t bufsize) {
 
 uint64_t File::size() const {
     struct stat buf;
-    if (fstat(fileno(), &buf) != 0) {
+    if(fstat(fileno(), &buf) != 0) {
         throw_system("Statting self failed:");
     }
     return buf.st_size;
 }
 
 void File::flush() {
-    if (fflush(f) != 0) {
+    if(fflush(f) != 0) {
         throw_system("Flushing data failed:");
     }
 }
@@ -174,7 +174,7 @@ void File::write(const std::string &s) {
 }
 
 void File::write(const unsigned char *s, uint64_t size) {
-    if (fwrite(s, 1, size, f) != size) {
+    if(fwrite(s, 1, size, f) != size) {
         throw_system("Could not write data:");
     }
 }

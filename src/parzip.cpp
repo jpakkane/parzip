@@ -40,35 +40,35 @@ using std::max;
 
 int main(int argc, char **argv) {
     const int num_threads = max((int)std::thread::hardware_concurrency(), 1);
-    if (argc < 3) {
+    if(argc < 3) {
         printf("%s <zip file> <files to archive>\n", argv[0]);
         return 1;
     }
-    if (exists_on_fs(argv[1])) {
+    if(exists_on_fs(argv[1])) {
         printf("Output file already exists, will not overwrite.\n");
         return 1;
     }
 
     std::vector<std::string> filenames;
-    for (int i = 2; i < argc; i++) {
+    for(int i = 2; i < argc; i++) {
         filenames.push_back(argv[i]);
-        if (filenames.back().empty()) {
+        if(filenames.back().empty()) {
             printf("Empty file name not permitted.");
             return 1;
         }
-        if (is_absolute_path(filenames.back())) {
+        if(is_absolute_path(filenames.back())) {
             printf("Absolute file names are forbidden in ZIP files.\n");
             return 1;
         }
     }
-    if (filenames.empty()) {
+    if(filenames.empty()) {
         printf("No input files listed.\n");
         return 1;
     }
     std::vector<fileinfo> files;
     try {
         files = expand_files(filenames);
-    } catch (const std::exception &e) {
+    } catch(const std::exception &e) {
         printf("Scanning input files failed: %s\n", e.what());
         return 1;
     }
@@ -78,20 +78,21 @@ int main(int argc, char **argv) {
      * followed by lots of small files causes waste of resources. See
      * zipfile.cpp for the explanation.
      */
-    auto midpoint = std::stable_partition(files.begin(), files.end(),
-                                          [](const fileinfo &fi) { return is_dir(fi); });
+    auto midpoint = std::stable_partition(
+        files.begin(), files.end(), [](const fileinfo &fi) { return is_dir(fi); });
     assert(midpoint >= files.begin());
     assert(midpoint <= files.end());
-    std::sort(midpoint, files.end(),
-              [](const fileinfo &f1, const fileinfo &f2) { return f1.fsize > f2.fsize; });
+    std::sort(midpoint, files.end(), [](const fileinfo &f1, const fileinfo &f2) {
+        return f1.fsize > f2.fsize;
+    });
     ZipCreator zc(argv[1]);
     int num_failures;
     try {
         size_t i = 0;
         auto *tc = zc.create(files, num_threads);
         size_t total_tasks = tc->total();
-        while (i < total_tasks) {
-            if (i >= tc->finished()) {
+        while(i < total_tasks) {
+            if(i >= tc->finished()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             } else {
                 auto txt = tc->entry(i++);
@@ -102,11 +103,11 @@ int main(int argc, char **argv) {
         printf("Success: %d\n", (int)tc->successes());
         printf("Fail:    %d\n", (int)tc->failures());
         num_failures = tc->failures();
-    } catch (std::exception &e) {
+    } catch(std::exception &e) {
         unlink(argv[1]);
         printf("Zip creation failed: %s\n", e.what());
         return 1;
-    } catch (...) {
+    } catch(...) {
         unlink(argv[1]);
         printf("Zip creation failed due to an unknown reason.");
         return 1;

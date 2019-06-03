@@ -22,7 +22,7 @@ TaskControl::TaskControl()
     : cur_state(TASK_NOT_STARTED), num_success(0), num_failures(0), total_tasks(0) {}
 
 void TaskControl::reserve(size_t num_entries) {
-    if (cur_state != TASK_NOT_STARTED) {
+    if(cur_state != TASK_NOT_STARTED) {
         throw std::logic_error("Called reserve after task has started.");
     }
     total_tasks = (int)num_entries;
@@ -90,7 +90,7 @@ bool TaskControl::should_stop() const {
 
 void TaskControl::throw_if_stopped() const {
     std::lock_guard<std::mutex> l(m);
-    if (stopped) {
+    if(stopped) {
         throw std::runtime_error("Stopping task evaluation.");
     }
 }

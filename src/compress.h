@@ -32,5 +32,5 @@ struct compressresult {
     std::string additional_unix_extra_data;
 };
 
-compressresult compress_entry(const fileinfo &f, ByteQueue &queue, bool use_lzma,
-                              const TaskControl &tc);
+compressresult
+compress_entry(const fileinfo &f, ByteQueue &queue, bool use_lzma, const TaskControl &tc);

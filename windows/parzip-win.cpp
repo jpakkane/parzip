@@ -44,24 +44,43 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, int iCmdShow) {
     wndclass.lpszMenuName = NULL;
     wndclass.lpszClassName = name;
 
-    if (!RegisterClass(&wndclass)) {
+    if(!RegisterClass(&wndclass)) {
         MessageBox(NULL, TEXT("Could not initialize wndclass"), name, MB_ICONERROR);
         return 0;
     }
 
-    hwnd = CreateWindow(name, TEXT("Parallel unzipper"), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,
-                        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, NULL, NULL, hInstance, NULL);
+    hwnd = CreateWindow(name,
+                        TEXT("Parallel unzipper"),
+                        WS_OVERLAPPEDWINDOW,
+                        CW_USEDEFAULT,
+                        CW_USEDEFAULT,
+                        CW_USEDEFAULT,
+                        CW_USEDEFAULT,
+                        NULL,
+                        NULL,
+                        hInstance,
+                        NULL);
 
     GetClientRect(hwnd, &rcClient);
-    hwndtv = CreateWindowEx(0, WC_TREEVIEW, TEXT("Tree view"), WS_CHILD, 0, 0, rcClient.right,
-                            rcClient.bottom, hwnd, NULL, hInstance, NULL);
+    hwndtv = CreateWindowEx(0,
+                            WC_TREEVIEW,
+                            TEXT("Tree view"),
+                            WS_CHILD,
+                            0,
+                            0,
+                            rcClient.right,
+                            rcClient.bottom,
+                            hwnd,
+                            NULL,
+                            hInstance,
+                            NULL);
 
     ShowWindow(hwndtv, iCmdShow);
     UpdateWindow(hwndtv);
     ShowWindow(hwnd, iCmdShow);
     UpdateWindow(hwnd);
     add_item(hwndtv);
-    while (GetMessage(&msg, NULL, 0, 0)) {
+    while(GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
@@ -87,14 +106,14 @@ void add_item(HWND hwndTV) {
     // Add the item to the tree-view control.
     hPrev = (HTREEITEM)SendMessage(hwndTV, TVM_INSERTITEM, 0, (LPARAM)(LPTVINSERTSTRUCT)&tvins);
 
-    if (hPrev == NULL) {
+    if(hPrev == NULL) {
         MessageBox(NULL, TEXT("Inserting failed."), NULL, MB_ICONERROR);
         return;
     }
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
-    switch (message) {
+    switch(message) {
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;

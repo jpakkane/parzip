@@ -42,9 +42,9 @@ fileinfo get_unix_stats(const std::string &fname) {
     struct stat buf;
     fileinfo sd;
 #ifdef _WIN32
-    if (stat(fname.c_str(), &buf) != 0) {
+    if(stat(fname.c_str(), &buf) != 0) {
 #else
-    if (lstat(fname.c_str(), &buf) != 0) {
+    if(lstat(fname.c_str(), &buf) != 0) {
 #endif
         throw_system("Could not get entry stats: ");
     }
@@ -75,13 +75,13 @@ std::vector<std::string> handle_dir_platform(const std::string &dirname) {
     WIN32_FIND_DATA data;
 
     hFind = FindFirstFile(glob.c_str(), &data);
-    if (hFind == INVALID_HANDLE_VALUE) {
+    if(hFind == INVALID_HANDLE_VALUE) {
         throw_system("Could not get directory contents: ");
     }
-    if (hFind != INVALID_HANDLE_VALUE) {
+    if(hFind != INVALID_HANDLE_VALUE) {
         do {
             entries.push_back(data.cFileName);
-        } while (FindNextFile(hFind, &data));
+        } while(FindNextFile(hFind, &data));
         FindClose(hFind);
     }
     return entries;
@@ -93,7 +93,7 @@ std::vector<std::string> handle_dir_platform(const std::string &dirname) {
     std::vector<std::string> entries;
     std::unique_ptr<DIR, int (*)(DIR *)> dirholder(opendir(dirname.c_str()), closedir);
     auto dir = dirholder.get();
-    if (!dir) {
+    if(!dir) {
         printf("Could not access directory: %s\n", dirname.c_str());
         return entries;
     }
@@ -101,9 +101,9 @@ std::vector<std::string> handle_dir_platform(const std::string &dirname) {
     struct dirent *cur = reinterpret_cast<struct dirent *>(buf.data());
     struct dirent *de;
     std::string basename;
-    while (readdir_r(dir, cur, &de) == 0 && de) {
+    while(readdir_r(dir, cur, &de) == 0 && de) {
         basename = cur->d_name;
-        if (basename == "." || basename == "..") {
+        if(basename == "." || basename == "..") {
             continue;
         }
         entries.push_back(basename);
@@ -118,7 +118,7 @@ std::vector<fileinfo> expand_dir(const std::string &dirname) {
     auto entries = handle_dir_platform(dirname);
     std::sort(entries.begin(), entries.end());
     std::string fullpath;
-    for (const auto &base : entries) {
+    for(const auto &base : entries) {
         fullpath = dirname + '/' + base;
         auto new_ones = expand_entry(fullpath);
         std::move(new_ones.begin(), new_ones.end(), std::back_inserter(result));
@@ -129,7 +129,7 @@ std::vector<fileinfo> expand_dir(const std::string &dirname) {
 std::vector<fileinfo> expand_entry(const std::string &fname) {
     auto fi = get_unix_stats(fname);
     std::vector<fileinfo> result{fi};
-    if (is_dir(fi)) {
+    if(is_dir(fi)) {
         auto new_ones = expand_dir(fname);
         std::move(new_ones.begin(), new_ones.end(), std::back_inserter(result));
         return result;
@@ -142,7 +142,7 @@ std::vector<fileinfo> expand_entry(const std::string &fname) {
 
 bool is_dir(const std::string &s) {
     struct stat sbuf;
-    if (stat(s.c_str(), &sbuf) < 0) {
+    if(stat(s.c_str(), &sbuf) < 0) {
         return false;
     }
     return (sbuf.st_mode & S_IFMT) == S_IFDIR;
@@ -152,7 +152,7 @@ bool is_dir(const fileinfo &f) { return S_ISDIR(f.mode); }
 
 bool is_file(const std::string &s) {
     struct stat sbuf;
-    if (stat(s.c_str(), &sbuf) < 0) {
+    if(stat(s.c_str(), &sbuf) < 0) {
         return false;
     }
     return (sbuf.st_mode & S_IFMT) == S_IFREG;
@@ -168,52 +168,54 @@ bool exists_on_fs(const std::string &s) {
 }
 
 void mkdirp(const std::string &s) {
-    if (is_dir(s)) {
+    if(is_dir(s)) {
         return;
     }
     std::string::size_type offset = 1;
     do {
         auto slash = s.find('/', offset);
-        if (slash == std::string::npos) {
+        if(slash == std::string::npos) {
             slash = s.size();
         }
         auto curdir = s.substr(0, slash);
-        if (!is_dir(curdir)) {
+        if(!is_dir(curdir)) {
 #ifdef _WIN32
             _mkdir(curdir.c_str());
 #else
             mkdir(curdir.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 #endif
-            if (!is_dir(curdir)) {
+            if(!is_dir(curdir)) {
                 throw_system("Could not create directory:");
             }
         }
         offset = slash + 1;
-    } while (offset <= s.size());
+    } while(offset <= s.size());
     assert(is_dir(s));
 }
 
 void create_dirs_for_file(const std::string &s) {
     auto lastslash = s.rfind('/');
-    if (lastslash == std::string::npos || lastslash == 0) {
+    if(lastslash == std::string::npos || lastslash == 0) {
         return;
     }
     mkdirp(s.substr(0, lastslash));
 }
 
 bool is_absolute_path(const std::string &fname) {
-    if (fname.empty()) {
+    if(fname.empty()) {
         return false;
     }
-    if (fname.front() == '/' || fname.front() == '\\' ||
-        (fname.size() > 2 && fname[1] == ':' && (fname[2] == '/' || fname[2] == '\\'))) {
+    if(fname.front() == '/' || fname.front() == '\\' ||
+       (fname.size() > 2 && fname[1] == ':' && (fname[2] == '/' || fname[2] == '\\'))) {
         return true;
     }
     return false;
 }
 
 std::vector<fileinfo> expand_files(const std::vector<std::string> &originals) {
-    return std::accumulate(originals.begin(), originals.end(), std::vector<fileinfo>{},
+    return std::accumulate(originals.begin(),
+                           originals.end(),
+                           std::vector<fileinfo>{},
                            [](std::vector<fileinfo> res, const std::string &s) {
                                auto n = expand_entry(s);
                                std::move(n.begin(), n.end(), std::back_inserter(res));

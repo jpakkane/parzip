@@ -55,9 +55,9 @@ void big_buf_test() {
     auto push_future = std::async(std::launch::async, [&bq, &bytes_inserted, &test_size] {
         const int insert_size = 1000;
         char some_buf[insert_size];
-        while (bytes_inserted < test_size) {
+        while(bytes_inserted < test_size) {
             int current_push_size;
-            if (bytes_inserted + insert_size > test_size) {
+            if(bytes_inserted + insert_size > test_size) {
                 current_push_size = test_size - bytes_inserted;
                 ST_ASSERT(current_push_size < insert_size);
             } else {
@@ -70,11 +70,11 @@ void big_buf_test() {
     });
 
     auto pop_future = std::async(std::launch::async, [&bq, &bytes_received] {
-        while (true) {
+        while(true) {
             bq.wait_until_full_or_shutdown();
             bytes_received += (int)bq.pop().size();
             QueueState cur_state = bq.state();
-            if (cur_state == QueueState::SHUTDOWN) {
+            if(cur_state == QueueState::SHUTDOWN) {
                 // Grab the last bits, if any.
                 bytes_received += (int)bq.pop().size();
                 return;
@@ -90,22 +90,22 @@ void big_buf_test() {
 }
 
 void forwarder(ByteQueue *in, ByteQueue *out) {
-    while (true) {
+    while(true) {
         in->wait_until_full_or_shutdown();
         auto data = in->pop();
         try {
             out->push(data.data(), data.size());
-        } catch (...) {
+        } catch(...) {
             in->shutdown();
             return;
         }
-        if (in->state() == QueueState::SHUTDOWN) {
+        if(in->state() == QueueState::SHUTDOWN) {
             auto final_data = in->pop();
             try {
-                if (!final_data.empty()) {
+                if(!final_data.empty()) {
                     out->push(final_data.data(), final_data.size());
                 }
-            } catch (...) {
+            } catch(...) {
             }
             out->shutdown();
             return;
@@ -119,9 +119,9 @@ std::string get_all(ByteQueue *in) {
         in->wait_until_full_or_shutdown();
         auto data = in->pop();
         result.insert(result.end(), data.begin(), data.end());
-    } while (in->state() != QueueState::SHUTDOWN);
+    } while(in->state() != QueueState::SHUTDOWN);
     auto final_data = in->pop();
-    if (!final_data.empty()) {
+    if(!final_data.empty()) {
         result.insert(result.end(), final_data.begin(), final_data.end());
     }
     return result;
@@ -145,7 +145,7 @@ std::string run_multibuf_test(const std::string &inmsg) {
 
     std::vector<std::future<void>> operations;
     operations.reserve(queues.size());
-    for (size_t i = 0; i < queues.size() - 1; ++i) {
+    for(size_t i = 0; i < queues.size() - 1; ++i) {
         operations.emplace_back(
             std::async(std::launch::async, forwarder, queues[i + 1], queues[i]));
     }

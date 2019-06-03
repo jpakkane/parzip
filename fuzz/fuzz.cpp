@@ -22,7 +22,7 @@
 int main(int argc, char **argv) {
     try {
         ZipFile zf(argv[1]);
-    } catch (const std::exception &e) {
+    } catch(const std::exception &e) {
     }
     // Let unexpected errors bubble out.
     // "They should never happen."

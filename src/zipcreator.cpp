@@ -72,7 +72,7 @@ void write_file(ByteQueue &q, File &ofile) {
     do {
         auto buf = q.pop();
         ofile.write(buf.data(), buf.size());
-    } while (q.state() != QueueState::SHUTDOWN);
+    } while(q.state() != QueueState::SHUTDOWN);
     auto final_buf = q.pop();
     ofile.write(final_buf.data(), final_buf.size());
 }
@@ -133,7 +133,7 @@ void write_z64_eod_locator(File &ofile, const zip64locator &l) {
     ofile.write32le(l.num_disks);
 }
 
-template <typename C> void append_data(std::string &s, const C &c) {
+template<typename C> void append_data(std::string &s, const C &c) {
     s.append(reinterpret_cast<const char *>(&c), sizeof(C));
 }
 
@@ -174,11 +174,11 @@ centralheader write_entry(File &ofile, CompressionTask &t) {
     uint64_t compressed_size = 0xFFFFFFFF;
     lh.fname = i.fname;
     const auto compression_result = t.result.get();
-    if (!compression_result.additional_unix_extra_data.empty()) {
+    if(!compression_result.additional_unix_extra_data.empty()) {
         t.fi.ue.data.insert(0, compression_result.additional_unix_extra_data.c_str());
     }
-    if (compression_result.entrytype == DIRECTORY_ENTRY) {
-        if (lh.fname.back() != '/') {
+    if(compression_result.entrytype == DIRECTORY_ENTRY) {
+        if(lh.fname.back() != '/') {
             lh.fname += '/';
         }
     }
@@ -225,25 +225,30 @@ centralheader write_entry(File &ofile, CompressionTask &t) {
     return ch;
 }
 
-void handle_future(File &ofile, CompressionTask &t, std::vector<centralheader> &chs,
+void handle_future(File &ofile,
+                   CompressionTask &t,
+                   std::vector<centralheader> &chs,
                    TaskControl &tc) {
     try {
         chs.push_back(write_entry(ofile, t));
         tc.add_success("OK: " + t.fi.fname);
-    } catch (const std::exception &e) {
+    } catch(const std::exception &e) {
         std::string msg("FAIL: ");
         msg += e.what();
         tc.add_failure(msg);
-    } catch (...) {
+    } catch(...) {
         tc.add_failure("FAIL: unknown reason.");
     }
 }
 
-bool pop_with_state(File &ofile, task_array &tasks, std::vector<centralheader> &chs,
-                    TaskControl &tc, const QueueState state) {
-    auto full_entry = std::find_if(tasks.begin(), tasks.end(),
-                                   [state](const auto &up) { return up->queue.state() == state; });
-    if (full_entry != tasks.end()) {
+bool pop_with_state(File &ofile,
+                    task_array &tasks,
+                    std::vector<centralheader> &chs,
+                    TaskControl &tc,
+                    const QueueState state) {
+    auto full_entry = std::find_if(
+        tasks.begin(), tasks.end(), [state](const auto &up) { return up->queue.state() == state; });
+    if(full_entry != tasks.end()) {
         handle_future(ofile, **full_entry, chs, tc);
         tasks.erase(full_entry);
         return true;
@@ -252,13 +257,13 @@ bool pop_with_state(File &ofile, task_array &tasks, std::vector<centralheader> &
 }
 
 void pop_future(File &ofile, task_array &tasks, std::vector<centralheader> &chs, TaskControl &tc) {
-    while (true) {
-        if (tc.should_stop()) {
+    while(true) {
+        if(tc.should_stop()) {
             return;
         }
-        if (pop_with_state(ofile, tasks, chs, tc, QueueState::FULL))
+        if(pop_with_state(ofile, tasks, chs, tc, QueueState::FULL))
             return;
-        if (pop_with_state(ofile, tasks, chs, tc, QueueState::SHUTDOWN))
+        if(pop_with_state(ofile, tasks, chs, tc, QueueState::SHUTDOWN))
             return;
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
@@ -269,13 +274,13 @@ void pop_future(File &ofile, task_array &tasks, std::vector<centralheader> &chs,
 ZipCreator::ZipCreator(const std::string fname) : fname(fname) {}
 
 ZipCreator::~ZipCreator() {
-    if (t) {
+    if(t) {
         t->join();
     }
 }
 
 TaskControl *ZipCreator::create(const std::vector<fileinfo> &files, int num_threads) {
-    if (tc.state() != TASK_NOT_STARTED) {
+    if(tc.state() != TASK_NOT_STARTED) {
         throw std::logic_error("Tried to start an already used packing process.");
     }
 
@@ -285,17 +290,21 @@ TaskControl *ZipCreator::create(const std::vector<fileinfo> &files, int num_thre
         [this](const std::vector<fileinfo> &files, int num_threads) {
             try {
                 this->run(files, num_threads);
-            } catch (const std::exception &e) {
+            } catch(const std::exception &e) {
                 printf("Fail: %s\n", e.what());
-            } catch (...) {
+            } catch(...) {
                 printf("Unknown fail.\n");
             }
         },
-        files, num_threads));
+        files,
+        num_threads));
     return &tc;
 }
 
-void launch_task(task_array &tasks, const fileinfo &f, const int64_t buffer_size, bool use_lzma,
+void launch_task(task_array &tasks,
+                 const fileinfo &f,
+                 const int64_t buffer_size,
+                 bool use_lzma,
                  TaskControl &tc) {
     auto t = std::make_unique<CompressionTask>(f, buffer_size);
     ByteQueue *bq_ptr = &t->queue;
@@ -304,7 +313,7 @@ void launch_task(task_array &tasks, const fileinfo &f, const int64_t buffer_size
             compressresult result = compress_entry(f, *bq_ptr, use_lzma, tc);
             bq_ptr->shutdown();
             return result;
-        } catch (...) {
+        } catch(...) {
             bq_ptr->shutdown();
             throw;
         }
@@ -338,24 +347,24 @@ void ZipCreator::run(const std::vector<fileinfo> &files, const int num_threads) 
      * In this case ongoing tasks either finish or fill their buffer and wait. New tasks
      * can not be launched until the big file is fully written.
      */
-    for (const auto &f : files) {
-        if (tc.should_stop()) {
+    for(const auto &f : files) {
+        if(tc.should_stop()) {
             break;
         }
-        while ((int)tasks.size() >= num_threads) {
+        while((int)tasks.size() >= num_threads) {
             pop_future(ofile, tasks, chs, tc);
         }
         launch_task(tasks, f, queue_size, use_lzma, tc);
     }
-    while (!tasks.empty()) {
+    while(!tasks.empty()) {
         pop_future(ofile, tasks, chs, tc);
     }
-    if (chs.empty()) {
+    if(chs.empty()) {
         throw std::runtime_error("All files failed to compress.");
     }
-    if (!tc.should_stop()) {
+    if(!tc.should_stop()) {
         uint64_t ch_offset = ofile.tell();
-        for (const auto &ch : chs) {
+        for(const auto &ch : chs) {
             write_central_header(ofile, ch);
         }
         uint64_t ch_end_offset = ofile.tell();

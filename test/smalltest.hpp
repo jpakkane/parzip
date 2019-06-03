@@ -27,7 +27,6 @@
 #define NORETURN __attribute__((noreturn))
 #endif
 
-
 static void NORETURN st_die(const char *fname, const char *lname, int line_num) {
     printf("FAIL:\n file: %s\n function: %s\n line: %d\n", fname, lname, line_num);
     fflush(stdout);
@@ -56,13 +55,13 @@ static void st_test_end(const char *test_func_name) {
 
 #define ST_ASSERT(stmt)                                                                            \
     do {                                                                                           \
-        if (!(stmt))                                                                               \
-            st_die(__FILE__, FUNCTION_NAME, __LINE__);                                       \
-    } while (0);
+        if(!(stmt))                                                                                \
+            st_die(__FILE__, FUNCTION_NAME, __LINE__);                                             \
+    } while(0);
 
 #define ST_TEST(func_name)                                                                         \
     do {                                                                                           \
         st_test_start(ST_TOSTRING(func_name));                                                     \
         func_name();                                                                               \
         st_test_end(ST_TOSTRING(func_name));                                                       \
-    } while (0);
+    } while(0);

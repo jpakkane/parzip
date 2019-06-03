@@ -31,8 +31,8 @@
 #if defined(_WIN32)
 MMapper::MMapper(const File &f) {
     map_size = f.size();
-    h = CreateFileMapping((HANDLE)_get_osfhandle(f.fileno()), nullptr, PAGE_READONLY, 0, 0,
-                          nullptr);
+    h = CreateFileMapping(
+        (HANDLE)_get_osfhandle(f.fileno()), nullptr, PAGE_READONLY, 0, 0, nullptr);
     addr = MapViewOfFile(h, FILE_MAP_READ, 0, 0, 0);
 }
 
@@ -40,11 +40,11 @@ MMapper::MMapper(const File &f) {
 MMapper::MMapper(const File &f) {
     map_size = f.size();
     auto fdnum = f.fileno();
-    if (map_size == 0) {
+    if(map_size == 0) {
         addr = nullptr;
     } else {
         addr = ::mmap(nullptr, map_size, PROT_READ, MAP_PRIVATE, fdnum, 0);
-        if (addr == MAP_FAILED) {
+        if(addr == MAP_FAILED) {
             throw_system("Could not mmap file:");
         }
     }
@@ -52,7 +52,7 @@ MMapper::MMapper(const File &f) {
 #endif
 
 MMapper::MMapper(MMapper &&other) {
-    if (&other == this) {
+    if(&other == this) {
         return;
     }
     this->addr = other.addr;
@@ -61,7 +61,7 @@ MMapper::MMapper(MMapper &&other) {
 }
 
 MMapper &MMapper::operator=(MMapper &&other) {
-    if (&other != this) {
+    if(&other != this) {
         this->addr = other.addr;
         this->map_size = other.map_size;
         other.addr = nullptr;
@@ -74,7 +74,7 @@ MMapper::~MMapper() {
     UnmapViewOfFile(addr);
     CloseHandle(h);
 #else
-    if (addr) {
+    if(addr) {
         munmap(addr, map_size);
     }
 #endif

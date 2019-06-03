@@ -9,3 +9,7 @@ IndentCaseLabels: false
 Standard: Cpp11
 ReflowComments: true
 SortIncludes: false
+BinPackArguments: false
+BinPackParameters: false
+SpaceBeforeParens: Never
+SpaceAfterTemplateKeyword: false
