@@ -27,12 +27,15 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #endif
+#include <filesystem>
 #include <algorithm>
 #include <array>
 #include <cassert>
 #include <memory>
 #include <numeric>
 #include <stdexcept>
+
+namespace fs = std::filesystem;
 
 namespace {
 
@@ -67,42 +70,12 @@ sd.ue.mtime = buf.st_mtim.tv_sec;
     return sd;
 } // namespace
 
-#ifdef _WIN32
-std::vector<std::string> handle_dir_platform(const std::string &dirname) {
-    std::string glob = dirname + "\\*.*";
-    std::vector<std::string> entries;
-    HANDLE hFind;
-    WIN32_FIND_DATA data;
-
-    hFind = FindFirstFile(glob.c_str(), &data);
-    if(hFind == INVALID_HANDLE_VALUE) {
-        throw_system("Could not get directory contents: ");
-    }
-    if(hFind != INVALID_HANDLE_VALUE) {
-        do {
-            entries.push_back(data.cFileName);
-        } while(FindNextFile(hFind, &data));
-        FindClose(hFind);
-    }
-    return entries;
-}
-
-#else
 
 std::vector<std::string> handle_dir_platform(const std::string &dirname) {
     std::vector<std::string> entries;
-    std::unique_ptr<DIR, int (*)(DIR *)> dirholder(opendir(dirname.c_str()), closedir);
-    auto dir = dirholder.get();
-    if(!dir) {
-        printf("Could not access directory: %s\n", dirname.c_str());
-        return entries;
-    }
-    std::array<char, sizeof(dirent) + NAME_MAX + 1> buf;
-    struct dirent *cur = reinterpret_cast<struct dirent *>(buf.data());
-    struct dirent *de;
     std::string basename;
-    while(readdir_r(dir, cur, &de) == 0 && de) {
-        basename = cur->d_name;
+    for(const auto &e : fs::directory_iterator(dirname.c_str())) {
+        auto basename = e.path().filename();
         if(basename == "." || basename == "..") {
             continue;
         }
@@ -110,7 +83,6 @@ std::vector<std::string> handle_dir_platform(const std::string &dirname) {
     }
     return entries;
 }
-#endif
 
 std::vector<fileinfo> expand_dir(const std::string &dirname) {
     // Always set order to create reproducible zip files.
