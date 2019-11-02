@@ -41,6 +41,9 @@ namespace {
 
 std::vector<fileinfo> expand_entry(const std::string &fname);
 
+// The C++ filesystem API does not seem to have uids or gids.
+// Thus we have to use platform specific code to get this information.
+
 fileinfo get_unix_stats(const std::string &fname) {
     struct stat buf;
     fileinfo sd;
@@ -61,8 +64,8 @@ fileinfo get_unix_stats(const std::string &fname) {
     sd.ue.atime = buf.st_atime;
     sd.ue.mtime = buf.st_mtime;
 #else
-sd.ue.atime = buf.st_atim.tv_sec;
-sd.ue.mtime = buf.st_mtim.tv_sec;
+    sd.ue.atime = buf.st_atim.tv_sec;
+    sd.ue.mtime = buf.st_mtim.tv_sec;
 #endif
     sd.mode = buf.st_mode;
     sd.fsize = buf.st_size;
@@ -113,21 +116,15 @@ std::vector<fileinfo> expand_entry(const std::string &fname) {
 } // namespace
 
 bool is_dir(const std::string &s) {
-    struct stat sbuf;
-    if(stat(s.c_str(), &sbuf) < 0) {
-        return false;
-    }
-    return (sbuf.st_mode & S_IFMT) == S_IFDIR;
+    fs::path p{s};
+    return fs::is_directory(p);
 }
 
 bool is_dir(const fileinfo &f) { return S_ISDIR(f.mode); }
 
 bool is_file(const std::string &s) {
-    struct stat sbuf;
-    if(stat(s.c_str(), &sbuf) < 0) {
-        return false;
-    }
-    return (sbuf.st_mode & S_IFMT) == S_IFREG;
+    fs::path p{s};
+    return fs::is_regular_file(p);
 }
 
 bool is_file(const fileinfo &f) { return S_ISREG(f.mode); }
@@ -135,34 +132,13 @@ bool is_file(const fileinfo &f) { return S_ISREG(f.mode); }
 bool is_symlink(const fileinfo &f) { return S_ISLNK(f.mode); }
 
 bool exists_on_fs(const std::string &s) {
-    struct stat sbuf;
-    return stat(s.c_str(), &sbuf) == 0;
+    fs::path p{s};
+    return fs::exists(p);
 }
 
 void mkdirp(const std::string &s) {
-    if(is_dir(s)) {
-        return;
-    }
-    std::string::size_type offset = 1;
-    do {
-        auto slash = s.find('/', offset);
-        if(slash == std::string::npos) {
-            slash = s.size();
-        }
-        auto curdir = s.substr(0, slash);
-        if(!is_dir(curdir)) {
-#ifdef _WIN32
-            _mkdir(curdir.c_str());
-#else
-            mkdir(curdir.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
-#endif
-            if(!is_dir(curdir)) {
-                throw_system("Could not create directory:");
-            }
-        }
-        offset = slash + 1;
-    } while(offset <= s.size());
-    assert(is_dir(s));
+    fs::path p{s};
+    fs::create_directories(p);
 }
 
 void create_dirs_for_file(const std::string &s) {
@@ -177,8 +153,11 @@ bool is_absolute_path(const std::string &fname) {
     if(fname.empty()) {
         return false;
     }
+    // The C++ standard library seems to define an absolute path as
+    // "absolute given the platform we are running on". Zip files
+    // must be multiplatform, so we have to roll our own here.
     if(fname.front() == '/' || fname.front() == '\\' ||
-       (fname.size() > 2 && fname[1] == ':' && (fname[2] == '/' || fname[2] == '\\'))) {
+            (fname.size() > 2 && fname[1] == ':' && (fname[2] == '/' || fname[2] == '\\'))) {
         return true;
     }
     return false;
