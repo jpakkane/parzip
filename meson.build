@@ -5,9 +5,9 @@ project('parzip', 'cpp',
 
 #add_global_arguments('-DWIN32_LEAN_AND_MEAN', language: 'cpp')
 
-zdep = dependency('zlib', fallback : ['zlib', 'zlib_dep'])
+zdep = dependency('zlib')
 if host_machine.system() != 'windows'
-  lzmadep = dependency('liblzma', fallback : ['liblzma', 'lzma_dep'])
+  lzmadep = dependency('liblzma')
   compr_deps = [zdep, lzmadep]
 else
   compr_deps = [zdep]
