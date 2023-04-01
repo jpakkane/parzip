@@ -53,6 +53,7 @@
 #include <cstring>
 
 #include <memory>
+#include <stdexcept>
 
 #define CHUNK 1024 * 1024
 
