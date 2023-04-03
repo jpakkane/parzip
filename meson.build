@@ -1,5 +1,5 @@
 project('parzip', 'cpp',
-  version : '1.3.0',
+  version : '1.4.0',
   license : 'GPLv3+',
   default_options : ['cpp_std=c++17', 'warning_level=3'])
 
